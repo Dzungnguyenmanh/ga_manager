@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kong-manager-frontend
+  labels:
+    app: kong-manager-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kong-manager-frontend
+  template:
+    metadata:
+      labels:
+        app: kong-manager-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: kong-manager-frontend:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NEXT_PUBLIC_API_URL
+          value: "http://kong-manager-backend:8080"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-manager-frontend
+spec:
+  selector:
+    app: kong-manager-frontend
+  ports:
+  - port: 3000
+    targetPort: 3000

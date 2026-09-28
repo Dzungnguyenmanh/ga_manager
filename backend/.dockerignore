@@ -1,0 +1,8 @@
+.git
+.gitignore
+bin
+api
+*.zip
+*.exe
+sqlc.zip
+sqlc.exe

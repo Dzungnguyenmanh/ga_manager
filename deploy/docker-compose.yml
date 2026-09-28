@@ -1,0 +1,141 @@
+services:
+  # -------------------------------------------------------------
+  # Kong Gateway Server & Database (Phục vụ kiểm thử trực tiếp)
+  # -------------------------------------------------------------
+  kong-database:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: kong
+      POSTGRES_DB: kong
+      POSTGRES_PASSWORD: kong_password
+    volumes:
+      - kong_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kong -d kong"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kong_manager_net
+
+  kong-migrations:
+    image: kong:3.8
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kong_password
+      KONG_PG_DATABASE: kong
+    command: kong migrations bootstrap
+    depends_on:
+      kong-database:
+        condition: service_healthy
+    networks:
+      - kong_manager_net
+    restart: on-failure
+
+  kong:
+    image: kong:3.8
+    user: "root"
+    entrypoint: ["/bin/sh", "-c", "rm -rf /usr/local/kong/sockets/* /usr/local/kong/*.lock /usr/local/kong/*.pid && /docker-entrypoint.sh kong docker-start"]
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kong_password
+      KONG_PG_DATABASE: kong
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+    ports:
+      - "8000:8000"   # Kong Proxy
+      - "8001:8001"   # Kong Admin API
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "kong health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      kong-migrations:
+        condition: service_completed_successfully
+      kong-database:
+        condition: service_healthy
+    networks:
+      - kong_manager_net
+
+  # -------------------------------------------------------------
+  # Kong Manager App Database & Cache
+  # -------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: kongmanager
+      POSTGRES_PASSWORD: kongmanager_password
+      POSTGRES_DB: kongmanager
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kongmanager -d kongmanager"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kong_manager_net
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - kong_manager_net
+
+  # -------------------------------------------------------------
+  # Kong Manager Backend & Frontend
+  # -------------------------------------------------------------
+  backend:
+    build: 
+      context: ../backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgres://kongmanager:kongmanager_password@postgres:5432/kongmanager?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
+      - KONG_MANAGER_ENV=development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - kong_manager_net
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+    depends_on:
+      - backend
+    networks:
+      - kong_manager_net
+
+volumes:
+  pgdata:
+  redisdata:
+  kong_pgdata:
+
+networks:
+  kong_manager_net:
+    driver: bridge

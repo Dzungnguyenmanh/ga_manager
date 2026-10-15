@@ -174,7 +174,7 @@ export default function ServicesPage() {
     setPath(svc.path || '/');
 
     // Parse metadata from tags
-    let cleanTags: string[] = [];
+    const cleanTags: string[] = [];
     let extractedOwner = '';
     let extractedCrit: 'low' | 'medium' | 'high' | 'critical' = 'medium';
 
@@ -225,7 +225,7 @@ export default function ServicesPage() {
 
     try {
       setIsSubmitting(true);
-      let finalTags = tags ? tags.split(',').map((t) => t.trim()).filter((t) => Boolean(t) && !t.startsWith('owner:') && !t.startsWith('criticality:')) : [];
+      const finalTags = tags ? tags.split(',').map((t) => t.trim()).filter((t) => Boolean(t) && !t.startsWith('owner:') && !t.startsWith('criticality:')) : [];
       if (owner.trim()) {
         finalTags.push(`owner:${owner.trim()}`);
       }
@@ -274,7 +274,7 @@ export default function ServicesPage() {
 
     try {
       setIsSubmitting(true);
-      let finalTags = tags ? tags.split(',').map((t) => t.trim()).filter((t) => Boolean(t) && !t.startsWith('owner:') && !t.startsWith('criticality:')) : [];
+      const finalTags = tags ? tags.split(',').map((t) => t.trim()).filter((t) => Boolean(t) && !t.startsWith('owner:') && !t.startsWith('criticality:')) : [];
       if (owner.trim()) {
         finalTags.push(`owner:${owner.trim()}`);
       }

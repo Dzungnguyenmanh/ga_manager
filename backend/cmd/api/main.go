@@ -71,7 +71,7 @@ func main() {
 	if dbUrl == "" {
 		dbUrl = "postgres://kongmanager:kongmanager_password@localhost:5432/kongmanager?sslmode=disable"
 	}
-	
+
 	pool, err := pgxpool.New(context.Background(), dbUrl)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
@@ -107,7 +107,7 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	
+
 	log.Printf("Server listening on port %s", port)
 	if err := http.ListenAndServe(":"+port, r); err != nil {
 		log.Fatalf("Server failed: %v", err)

@@ -354,7 +354,7 @@ export default function DeclarativePage() {
             <div>
               <p className="font-bold">Enterprise Declarative Configuration & GitOps Standard</p>
               <p className="text-indigo-800/80">
-                Toàn bộ Services, Routes, Upstreams, Targets, Consumers, Credentials và Plugins được xuất/nhập dưới định dạng chuẩn <code className="font-mono bg-indigo-100 px-1 rounded">_format_version: "3.0"</code> tương thích hoàn toàn với <strong>decK CLI</strong> và <strong>Kong Konnect</strong>.
+                Toàn bộ Services, Routes, Upstreams, Targets, Consumers, Credentials và Plugins được xuất/nhập dưới định dạng chuẩn <code className="font-mono bg-indigo-100 px-1 rounded">_format_version: &quot;3.0&quot;</code> tương thích hoàn toàn với <strong>decK CLI</strong> và <strong>Kong Konnect</strong>.
               </p>
             </div>
           </div>
@@ -610,7 +610,7 @@ export default function DeclarativePage() {
                         )}
                         <div className="space-y-2 text-xs text-gray-600">
                           <p>
-                            Khuyến nghị production: chạy <strong>"Kiểm tra trước (Dry-Run Diff)"</strong> trước khi áp dụng đồng bộ thật vào cụm Gateway.
+                            Khuyến nghị production: chạy <strong>&quot;Kiểm tra trước (Dry-Run Diff)&quot;</strong> trước khi áp dụng đồng bộ thật vào cụm Gateway.
                           </p>
                           <div className="pt-3 border-t border-gray-200 flex justify-end gap-2">
                             <Button

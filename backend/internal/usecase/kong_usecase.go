@@ -1231,4 +1231,3 @@ func (u *kongUsecase) PromoteConfig(ctx context.Context, sourceClusterID, target
 
 	return diffSummary, nil
 }
-

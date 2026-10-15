@@ -20,7 +20,7 @@ func (u *authUsecase) Login(ctx context.Context, username, password string) (str
 	if err != nil {
 		return "", errors.New("invalid credentials")
 	}
-	
+
 	// Basic string compare for MVP (in production use bcrypt)
 	if user.Password != password {
 		return "", errors.New("invalid credentials")

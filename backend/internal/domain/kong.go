@@ -28,25 +28,25 @@ type KongRouteServiceRef struct {
 }
 
 type KongRoute struct {
-	ID                      string                 `json:"id,omitempty"`
-	Name                    string                 `json:"name,omitempty"`
-	Protocols               []string               `json:"protocols"`
-	Methods                 []string               `json:"methods,omitempty"`
-	Hosts                   []string               `json:"hosts,omitempty"`
-	Paths                   []string               `json:"paths,omitempty"`
-	Headers                 map[string][]string    `json:"headers,omitempty"`
-	SNIs                    []string               `json:"snis,omitempty"`
-	Sources                 []interface{}          `json:"sources,omitempty"`
-	Destinations            []interface{}          `json:"destinations,omitempty"`
-	StripPath               bool                   `json:"strip_path,omitempty"`
-	PreserveHost            bool                   `json:"preserve_host,omitempty"`
-	RegexPriority           int                    `json:"regex_priority,omitempty"`
-	PathHandling            string                 `json:"path_handling,omitempty"`
-	HTTPSRedirectStatusCode int                    `json:"https_redirect_status_code,omitempty"`
-	RequestBuffering        *bool                  `json:"request_buffering,omitempty"`
-	ResponseBuffering       *bool                  `json:"response_buffering,omitempty"`
-	Service                 *KongRouteServiceRef   `json:"service,omitempty"`
-	Tags                    []string               `json:"tags,omitempty"`
+	ID                      string               `json:"id,omitempty"`
+	Name                    string               `json:"name,omitempty"`
+	Protocols               []string             `json:"protocols"`
+	Methods                 []string             `json:"methods,omitempty"`
+	Hosts                   []string             `json:"hosts,omitempty"`
+	Paths                   []string             `json:"paths,omitempty"`
+	Headers                 map[string][]string  `json:"headers,omitempty"`
+	SNIs                    []string             `json:"snis,omitempty"`
+	Sources                 []interface{}        `json:"sources,omitempty"`
+	Destinations            []interface{}        `json:"destinations,omitempty"`
+	StripPath               bool                 `json:"strip_path,omitempty"`
+	PreserveHost            bool                 `json:"preserve_host,omitempty"`
+	RegexPriority           int                  `json:"regex_priority,omitempty"`
+	PathHandling            string               `json:"path_handling,omitempty"`
+	HTTPSRedirectStatusCode int                  `json:"https_redirect_status_code,omitempty"`
+	RequestBuffering        *bool                `json:"request_buffering,omitempty"`
+	ResponseBuffering       *bool                `json:"response_buffering,omitempty"`
+	Service                 *KongRouteServiceRef `json:"service,omitempty"`
+	Tags                    []string             `json:"tags,omitempty"`
 }
 
 type KongConsumer struct {
@@ -184,19 +184,19 @@ type KongUpstreamHealth struct {
 }
 
 type KongCertificate struct {
-	ID              string               `json:"id,omitempty"`
-	Cert            string               `json:"cert"`
-	Key             string               `json:"key"`
-	CertAlt         string               `json:"cert_alt,omitempty"`
-	KeyAlt          string               `json:"key_alt,omitempty"`
-	SNIs            []string             `json:"snis,omitempty"`
-	Tags            []string             `json:"tags,omitempty"`
-	CreatedAt       int64                `json:"created_at,omitempty"`
-	ExpiryDate      string               `json:"expiry_date,omitempty"`
-	DaysUntilExpiry int                  `json:"days_until_expiry,omitempty"`
-	IsExpired       bool                 `json:"is_expired,omitempty"`
-	Issuer          string               `json:"issuer,omitempty"`
-	Subject         string               `json:"subject,omitempty"`
+	ID              string   `json:"id,omitempty"`
+	Cert            string   `json:"cert"`
+	Key             string   `json:"key"`
+	CertAlt         string   `json:"cert_alt,omitempty"`
+	KeyAlt          string   `json:"key_alt,omitempty"`
+	SNIs            []string `json:"snis,omitempty"`
+	Tags            []string `json:"tags,omitempty"`
+	CreatedAt       int64    `json:"created_at,omitempty"`
+	ExpiryDate      string   `json:"expiry_date,omitempty"`
+	DaysUntilExpiry int      `json:"days_until_expiry,omitempty"`
+	IsExpired       bool     `json:"is_expired,omitempty"`
+	Issuer          string   `json:"issuer,omitempty"`
+	Subject         string   `json:"subject,omitempty"`
 }
 
 type KongSNI struct {
@@ -477,20 +477,20 @@ type KongDeclarativeUpstream struct {
 }
 
 type KongDeclarativeService struct {
-	Name              string               `json:"name" yaml:"name"`
-	Protocol          string               `json:"protocol" yaml:"protocol"`
-	Host              string               `json:"host" yaml:"host"`
-	Port              int                  `json:"port" yaml:"port"`
-	Path              string               `json:"path,omitempty" yaml:"path,omitempty"`
-	Retries           int                  `json:"retries,omitempty" yaml:"retries,omitempty"`
-	ConnectTimeout    int                  `json:"connect_timeout,omitempty" yaml:"connect_timeout,omitempty"`
-	WriteTimeout      int                  `json:"write_timeout,omitempty" yaml:"write_timeout,omitempty"`
-	ReadTimeout       int                  `json:"read_timeout,omitempty" yaml:"read_timeout,omitempty"`
-	URL               string               `json:"url,omitempty" yaml:"url,omitempty"`
-	Enabled           *bool                `json:"enabled,omitempty" yaml:"enabled,omitempty"`
-	Tags              []string             `json:"tags,omitempty" yaml:"tags,omitempty"`
-	Routes            []KongRoute          `json:"routes,omitempty" yaml:"routes,omitempty"`
-	Plugins           []KongPlugin         `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Name           string       `json:"name" yaml:"name"`
+	Protocol       string       `json:"protocol" yaml:"protocol"`
+	Host           string       `json:"host" yaml:"host"`
+	Port           int          `json:"port" yaml:"port"`
+	Path           string       `json:"path,omitempty" yaml:"path,omitempty"`
+	Retries        int          `json:"retries,omitempty" yaml:"retries,omitempty"`
+	ConnectTimeout int          `json:"connect_timeout,omitempty" yaml:"connect_timeout,omitempty"`
+	WriteTimeout   int          `json:"write_timeout,omitempty" yaml:"write_timeout,omitempty"`
+	ReadTimeout    int          `json:"read_timeout,omitempty" yaml:"read_timeout,omitempty"`
+	URL            string       `json:"url,omitempty" yaml:"url,omitempty"`
+	Enabled        *bool        `json:"enabled,omitempty" yaml:"enabled,omitempty"`
+	Tags           []string     `json:"tags,omitempty" yaml:"tags,omitempty"`
+	Routes         []KongRoute  `json:"routes,omitempty" yaml:"routes,omitempty"`
+	Plugins        []KongPlugin `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 type KongDeclarativeConfig struct {

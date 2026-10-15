@@ -1025,4 +1025,3 @@ func (h *KongHandler) PromoteConfig(c *gin.Context) {
 	h.recordAudit(c, req.TargetClusterID, "PROMOTE_CONFIG", "cluster", strconv.Itoa(int(req.SourceClusterID)), map[string]any{"source_cluster_id": req.SourceClusterID, "target_cluster_id": req.TargetClusterID})
 	c.JSON(http.StatusOK, result)
 }
-

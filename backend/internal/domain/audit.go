@@ -10,7 +10,7 @@ type AuditLog struct {
 	ClusterID  *int32         `json:"cluster_id,omitempty"`
 	UserID     *int32         `json:"user_id,omitempty"`
 	Username   string         `json:"username"`
-	Action     string         `json:"action"` // CREATE, UPDATE, DELETE, RESTORE_SNAPSHOT, SYNC_CONFIG
+	Action     string         `json:"action"`   // CREATE, UPDATE, DELETE, RESTORE_SNAPSHOT, SYNC_CONFIG
 	Resource   string         `json:"resource"` // service, route, plugin, consumer, upstream, target, certificate, snapshot
 	ResourceID string         `json:"resource_id,omitempty"`
 	Details    map[string]any `json:"details,omitempty"`

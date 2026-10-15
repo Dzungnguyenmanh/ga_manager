@@ -17,7 +17,7 @@ FROM alpine:3.20
 
 WORKDIR /app
 
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata curl wget
 
 COPY --from=builder /app/api /app/api
 

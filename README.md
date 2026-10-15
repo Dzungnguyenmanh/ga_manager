@@ -5,6 +5,8 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react)](https://react.dev)
 [![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-v4-38B2AC?style=flat&logo=tailwind-css)](https://tailwindcss.com)
 [![Kong Gateway](https://img.shields.io/badge/Kong%20Gateway-3.8+-003459?style=flat&logo=kong)](https://konghq.com)
+[![CI Pipeline](https://github.com/Dzungnguyenmanh/ga_manager/actions/workflows/ci.yml/badge.svg)](https://github.com/Dzungnguyenmanh/ga_manager/actions/workflows/ci.yml)
+[![Docker Images](https://img.shields.io/badge/GHCR-Container%20Registry-blue?logo=docker)](https://github.com/Dzungnguyenmanh/ga_manager/pkgs/container/ga_manager%2Fbackend)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 **Gateway Manager** là nền tảng Control Plane cấp doanh nghiệp (Enterprise API Control Plane) được thiết kế chuyên biệt để quản trị, cấu hình, kiểm soát an toàn và vận hành liên tục 24/7 các cụm **Kong API Gateway**.
@@ -25,7 +27,8 @@ Khác với các công cụ Admin API GUI cơ bản, Gateway Manager cung cấp 
 - [5. Cấu hình biến môi trường (Environment Variables)](#5-cấu-hình-biến-môi-trường-environment-variables)
 - [6. Cấu trúc thư mục dự án](#6-cấu-trúc-thư-mục-dự-án)
 - [7. Kiểm thử & Đảm bảo chất lượng (QA & Testing)](#7-kiểm-thử--đảm-bảo-chất-lượng-qa--testing)
-- [8. Đóng góp & Bản quyền](#8-đóng-góp--bản-quyền)
+- [8. Quy trình CI/CD & Triển khai tự động (CI/CD Pipeline)](#8-quy-trình-cicd--triển-khai-tự-động-cicd-pipeline)
+- [9. Đóng góp & Bản quyền](#9-đóng-góp--bản-quyền)
 
 ---
 
@@ -285,6 +288,81 @@ npm run build
 
 ---
 
-## 8. Đóng góp & Bản quyền
+## 8. Quy trình CI/CD & Triển khai tự động (CI/CD Pipeline)
+
+Dự án thiết lập chuỗi tự động hóa CI/CD khép kín, chuẩn Production sử dụng **GitHub Actions**, **GitHub Container Registry (GHCR)** và **Aqua Security Trivy**:
+
+```mermaid
+flowchart LR
+    Dev([Developer]) -->|Git Push / PR| GH[GitHub Actions]
+    
+    subgraph CI["1. Continuous Integration (ci.yml)"]
+        BE_CI["Backend: gofmt, vet, unit tests, build"]
+        FE_CI["Frontend: tsc, eslint, vitest, next build"]
+        VAL["Manifests: docker compose & k8s syntax"]
+        GATE{"Quality Gate\nStatus Check"}
+        BE_CI --> GATE
+        FE_CI --> GATE
+        VAL --> GATE
+    end
+
+    subgraph CD_REG["2. Delivery & Security (docker-publish.yml)"]
+        DOCKER_BUILD["Docker Buildx (Multi-Arch)"]
+        TRIVY["Trivy Security Scan\n(CVEs High/Critical)"]
+        GHCR[("GHCR Registry\nghcr.io")]
+        DOCKER_BUILD --> TRIVY --> GHCR
+    end
+
+    subgraph CD_DEPLOY["3. Deployment (cd-deploy.yml)"]
+        ENV_CHOICE{"Environment\n(STG / PROD)"}
+        SSH_COMPOSE["Docker Compose Host\n(SSH + Rolling Update + Health Check)"]
+        K8S_DEPLOY["Kubernetes Cluster\n(kubectl rollout + Auto Rollback)"]
+        ENV_CHOICE --> SSH_COMPOSE
+        ENV_CHOICE --> K8S_DEPLOY
+    end
+
+    GH --> CI
+    GATE -->|On Merge / Tag| CD_REG
+    CD_REG -->|Trigger / Manual Dispatch| CD_DEPLOY
+```
+
+### Các Workflows trong `.github/workflows/`
+
+| Workflow | Tập tin | Kích hoạt (Trigger) | Nhiệm vụ chính |
+| :--- | :--- | :--- | :--- |
+| **CI - Quality Gate** | [ci.yml](file:///.github/workflows/ci.yml) | `push` / `pull_request` (`master`, `main`), `workflow_dispatch` | • Go format check (`gofmt`), static analysis (`go vet`)<br>• Backend Unit Tests + Coverage report<br>• TypeScript type checking (`tsc`) & ESLint 9<br>• Frontend Vitest unit/component tests<br>• Next.js Production Build verification<br>• Kiểm tra cú pháp `docker-compose.yml` & k8s manifests |
+| **Publish Containers** | [docker-publish.yml](file:///.github/workflows/docker-publish.yml) | `push` (`master`, `main`), Tags `v*.*.*`, `workflow_dispatch` | • Đóng gói Docker Backend & Frontend với cache `type=gha`<br>• Quét lỗ hổng bảo mật với Aqua Trivy (High/Critical CVEs)<br>• Xuất bản Container Images lên GitHub Packages (`ghcr.io`)<br>• Tự động tạo GitHub Release & Changelog khi push Git Tag |
+| **CD - Deployment** | [cd-deploy.yml](file:///.github/workflows/cd-deploy.yml) | `workflow_dispatch` (Chọn môi trường: `staging` / `production`) | • Triển khai qua Docker Compose (SSH pull, rolling restart, verify `/health`)<br>• Triển khai qua Kubernetes (`kubectl rollout status` + tự động Rollback `rollout undo` nếu có sự cố) |
+
+### Kiểm tra CI cục bộ trước khi Push (Local Quality Gate)
+
+Để đảm bảo Pull Request vượt qua mọi bài test của CI, chạy trực tiếp script kiểm tra toàn diện:
+
+- **Trên Linux / macOS**:
+  ```bash
+  chmod +x deploy/scripts/ci-local.sh
+  ./deploy/scripts/ci-local.sh
+  ```
+- **Trên Windows (PowerShell)**:
+  ```powershell
+  .\deploy\scripts\ci-local.ps1
+  ```
+
+### Cấu hình Secrets trên GitHub Repository
+
+Để sử dụng quy trình CD tự động ([cd-deploy.yml](file:///.github/workflows/cd-deploy.yml)), cấu hình các Secrets sau tại **Settings > Secrets and variables > Actions**:
+
+| Secret Name | Áp dụng cho | Mục đích |
+| :--- | :--- | :--- |
+| `DEPLOY_SSH_HOST` | Docker Compose (SSH) | Địa chỉ IP hoặc hostname của server máy chủ |
+| `DEPLOY_SSH_USER` | Docker Compose (SSH) | Tên người dùng SSH (ví dụ: `ubuntu`, `deployer`) |
+| `DEPLOY_SSH_KEY` | Docker Compose (SSH) | SSH Private Key có quyền truy cập máy chủ |
+| `DEPLOY_SSH_PORT` | Docker Compose (SSH) | Cổng SSH (mặc định: `22`) |
+| `DEPLOY_PATH` | Docker Compose (SSH) | Thư mục chứa mã nguồn/compose trên máy chủ (ví dụ: `/opt/kong-manager`) |
+| `KUBECONFIG` | Kubernetes Deploy | Nội dung file kubeconfig để xác thực với cụm k8s |
+
+---
+
+## 9. Đóng góp & Bản quyền
 
 Dự án được xây dựng và phát triển theo giấy phép [MIT License](LICENSE). Mọi đóng góp, phản hồi lỗi hoặc đề xuất tính năng vui lòng tạo Pull Request hoặc Issue trên GitHub repository.

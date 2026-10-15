@@ -29,6 +29,10 @@ func SetupRouter(
 		c.JSON(200, gin.H{"message": "pong"})
 	})
 
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
+
 	api := r.Group("/api")
 
 	// Cluster management routes (no cluster ID required)
@@ -51,7 +55,7 @@ func SetupRouter(
 		kong.POST("/services", kongHandler.CreateService)
 		kong.PATCH("/services/:serviceId", kongHandler.UpdateService)
 		kong.DELETE("/services/:serviceId", kongHandler.DeleteService)
-		
+
 		// Routes
 		kong.GET("/routes", kongHandler.ListRoutes)
 		kong.POST("/routes", kongHandler.CreateRoute)

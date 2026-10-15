@@ -16,8 +16,8 @@ spec:
     spec:
       containers:
       - name: backend
-        image: kong-manager-backend:latest
-        imagePullPolicy: IfNotPresent
+        image: images.hmisp.com.vn/h-iam/ga-manager-backend:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
         env:
@@ -43,6 +43,8 @@ spec:
             port: 8080
           initialDelaySeconds: 3
           periodSeconds: 5
+      imagePullSecrets:
+      - name: harbor-secret
 ---
 apiVersion: v1
 kind: Service

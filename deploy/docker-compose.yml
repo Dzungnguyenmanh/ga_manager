@@ -101,6 +101,7 @@ services:
   # Kong Manager Backend & Frontend
   # -------------------------------------------------------------
   backend:
+    image: images.hmisp.com.vn/h-iam/ga-manager-backend:latest
     build: 
       context: ../backend
       dockerfile: Dockerfile
@@ -125,7 +126,8 @@ services:
       - kong_manager_net
 
   frontend:
-    build:
+    image: images.hmisp.com.vn/h-iam/ga-manager-frontend:latest
+    build: 
       context: ../frontend
       dockerfile: Dockerfile
     ports:

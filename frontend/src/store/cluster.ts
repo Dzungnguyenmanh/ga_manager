@@ -3,7 +3,14 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { KongCluster } from '@/types';
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.trim() !== '')
+      ? process.env.NEXT_PUBLIC_API_URL
+      : '';
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+};
 
 interface ClusterState {
   clusters: KongCluster[];
@@ -28,7 +35,7 @@ export const useClusterStore = create<ClusterState>()(
       fetchClusters: async () => {
         try {
           set({ isLoading: true });
-          const res = await axios.get(`${API_BASE_URL}/api/clusters`);
+          const res = await axios.get(`${getApiBaseUrl()}/api/clusters`);
           const data: KongCluster[] = Array.isArray(res.data) ? res.data : [];
 
           const currentActiveId = get().activeClusterId;

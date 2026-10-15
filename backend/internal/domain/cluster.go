@@ -3,10 +3,11 @@ package domain
 import "context"
 
 type KongCluster struct {
-	ID         int32  `json:"id"`
-	Name       string `json:"name"`
-	URL        string `json:"url"`
-	AdminToken string `json:"admin_token,omitempty"`
+	ID          int32  `json:"id"`
+	Name        string `json:"name"`
+	URL         string `json:"url"`
+	AdminToken  string `json:"admin_token,omitempty"`
+	Environment string `json:"environment,omitempty"` // DEV, STG, PROD
 }
 
 type ClusterUsecase interface {

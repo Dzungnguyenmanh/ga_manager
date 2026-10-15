@@ -17,6 +17,7 @@ export function ClusterModal({ isOpen, onClose, onSave, cluster }: ClusterModalP
   const [name, setName] = React.useState('');
   const [url, setUrl] = React.useState('');
   const [adminToken, setAdminToken] = React.useState('');
+  const [environment, setEnvironment] = React.useState<'DEV' | 'STG' | 'PROD'>('DEV');
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState('');
 
@@ -25,10 +26,12 @@ export function ClusterModal({ isOpen, onClose, onSave, cluster }: ClusterModalP
       setName(cluster.name || '');
       setUrl(cluster.url || '');
       setAdminToken(cluster.admin_token || '');
+      setEnvironment(cluster.environment || 'DEV');
     } else {
       setName('');
       setUrl('http://localhost:8001');
       setAdminToken('');
+      setEnvironment('DEV');
     }
     setError('');
   }, [cluster, isOpen]);
@@ -52,6 +55,7 @@ export function ClusterModal({ isOpen, onClose, onSave, cluster }: ClusterModalP
         name: name.trim(),
         url: url.trim(),
         admin_token: adminToken.trim(),
+        environment,
       });
       onClose();
     } catch (err: any) {
@@ -100,6 +104,24 @@ export function ClusterModal({ isOpen, onClose, onSave, cluster }: ClusterModalP
           onChange={(e) => setAdminToken(e.target.value)}
           helperText="Để trống nếu Kong Gateway không kích hoạt xác thực Admin"
         />
+
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-gray-700">
+            Phân loại môi trường (Environment)
+          </label>
+          <select
+            value={environment}
+            onChange={(e) => setEnvironment(e.target.value as any)}
+            className="w-full h-9 rounded-lg border border-gray-300 bg-white px-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+          >
+            <option value="DEV">DEV (Môi trường Phát triển - An toàn)</option>
+            <option value="STG">STG (Môi trường Staging / Pre-prod)</option>
+            <option value="PROD">PROD (Môi trường Production - Cảnh báo nghiêm ngặt)</option>
+          </select>
+          <p className="text-[11px] text-gray-500">
+            Môi trường PROD sẽ kích hoạt xác nhận an toàn 2 bước trước mọi thao tác xóa / sync
+          </p>
+        </div>
 
         <div className="flex justify-end gap-3 pt-4">
           <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>

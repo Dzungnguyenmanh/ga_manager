@@ -40,6 +40,7 @@ export default function CertificatesPage() {
   const { activeCluster, activeClusterId } = useClusterStore();
   const [activeTab, setActiveTab] = React.useState<CertTab>('server-certs');
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [expiryFilter, setExpiryFilter] = React.useState<'all' | '7days' | '14days' | '30days' | 'expired'>('all');
 
   // Server Certificates & SNIs State
   const [certs, setCerts] = React.useState<KongCertificate[]>([]);
@@ -191,13 +192,25 @@ export default function CertificatesPage() {
 
   // Delete Server Cert
   const handleDeleteCert = async (certId: string) => {
-    if (confirm('Bạn có chắc muốn xóa chứng chỉ SSL này? Các Route sử dụng SNI này sẽ mất TLS termination.')) {
-      try {
-        await api.delete(`/api/kong/certificates/${certId}`);
-        setCerts((prev) => prev.filter((c) => c.id !== certId));
-      } catch (err: any) {
-        alert(`Lỗi khi xóa chứng chỉ: ${err.response?.data?.error || err.message}`);
+    if (activeCluster?.environment === 'PROD') {
+      const confirmed = prompt(
+        `⚠️ CẢNH BÁO: Môi trường PRODUCTION (${activeCluster.name})!\nVui lòng nhập Certificate ID "${certId}" để xác nhận xóa:`
+      );
+      if (confirmed !== certId) {
+        alert('ID không khớp. Đã hủy thao tác xóa chứng chỉ.');
+        return;
       }
+    } else {
+      if (!confirm('Bạn có chắc muốn xóa chứng chỉ SSL này? Các Route sử dụng SNI này sẽ mất TLS termination.')) {
+        return;
+      }
+    }
+
+    try {
+      await api.delete(`/api/kong/certificates/${certId}`);
+      setCerts((prev) => prev.filter((c) => c.id !== certId));
+    } catch (err: any) {
+      alert(`Lỗi khi xóa chứng chỉ: ${err.response?.data?.error || err.message}`);
     }
   };
 
@@ -215,12 +228,19 @@ export default function CertificatesPage() {
 
   // Filtered lists
   const filteredCerts = certs.filter((c) => {
+    if (expiryFilter === 'expired' && !c.is_expired) return false;
+    if (expiryFilter === '7days' && (c.is_expired || c.days_until_expiry === undefined || c.days_until_expiry > 7)) return false;
+    if (expiryFilter === '14days' && (c.is_expired || c.days_until_expiry === undefined || c.days_until_expiry > 14)) return false;
+    if (expiryFilter === '30days' && (c.is_expired || c.days_until_expiry === undefined || c.days_until_expiry > 30)) return false;
+
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
     return (
       c.id.toLowerCase().includes(q) ||
       (c.snis && c.snis.some((s) => s.toLowerCase().includes(q))) ||
-      (c.tags && c.tags.some((t) => t.toLowerCase().includes(q)))
+      (c.tags && c.tags.some((t) => t.toLowerCase().includes(q))) ||
+      (c.issuer && c.issuer.toLowerCase().includes(q)) ||
+      (c.subject && c.subject.toLowerCase().includes(q))
     );
   });
 
@@ -330,14 +350,29 @@ export default function CertificatesPage() {
                 <CardTitle className="text-base font-semibold">Kho Quản lý Chứng chỉ Bảo mật</CardTitle>
                 <CardDescription>Cấu hình mã hóa HTTPS cho Domain và xác thực CA Certificate</CardDescription>
               </div>
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Tìm theo ID, Domain SNI, Tags..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-9 text-xs"
-                />
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                {activeTab === 'server-certs' && (
+                  <select
+                    value={expiryFilter}
+                    onChange={(e) => setExpiryFilter(e.target.value as any)}
+                    className="h-9 px-2.5 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    <option value="all">Tất cả thời hạn</option>
+                    <option value="7days">🚨 Khẩn cấp (&le; 7 ngày)</option>
+                    <option value="14days">⚠️ Cảnh báo cao (&le; 14 ngày)</option>
+                    <option value="30days">⏰ Sắp hết hạn (&le; 30 ngày)</option>
+                    <option value="expired">❌ Đã hết hạn (Expired)</option>
+                  </select>
+                )}
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Tìm theo ID, Domain, Issuer..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 h-9 text-xs"
+                  />
+                </div>
               </div>
             </div>
 
@@ -412,7 +447,7 @@ export default function CertificatesPage() {
                       <TableRow>
                         <TableHead className="font-semibold text-gray-700">Certificate ID</TableHead>
                         <TableHead className="font-semibold text-gray-700">Ánh xạ SNIs (Domains)</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Loại khóa</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Thời hạn & Trạng thái</TableHead>
                         <TableHead className="font-semibold text-gray-700">Tags</TableHead>
                         <TableHead className="font-semibold text-gray-700 text-right">Hành động</TableHead>
                       </TableRow>
@@ -454,10 +489,47 @@ export default function CertificatesPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200">
-                              <CheckCircle2 className="h-3 w-3 mr-1 text-emerald-600" />
-                              Active Pair
-                            </Badge>
+                            {c.expiry_date ? (
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 text-xs text-gray-900 font-mono">
+                                  <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                                  <span>{new Date(c.expiry_date).toLocaleDateString()}</span>
+                                </div>
+                                <div>
+                                  {c.is_expired ? (
+                                    <Badge variant="destructive" className="text-[10px]">
+                                      Đã hết hạn
+                                    </Badge>
+                                  ) : c.days_until_expiry !== undefined && c.days_until_expiry <= 7 ? (
+                                    <Badge variant="destructive" className="text-[10px] animate-pulse">
+                                      🚨 Nguy cấp (&le; 7 ngày: {c.days_until_expiry}d)
+                                    </Badge>
+                                  ) : c.days_until_expiry !== undefined && c.days_until_expiry <= 14 ? (
+                                    <Badge variant="warning" className="text-[10px] bg-rose-50 text-rose-700 border-rose-300">
+                                      ⚠️ Cảnh báo cao ({c.days_until_expiry} ngày)
+                                    </Badge>
+                                  ) : c.days_until_expiry !== undefined && c.days_until_expiry <= 30 ? (
+                                    <Badge variant="warning" className="text-[10px] bg-amber-50 text-amber-700 border-amber-300">
+                                      Sắp hết hạn ({c.days_until_expiry} ngày)
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="success" className="text-[10px]">
+                                      Còn {c.days_until_expiry} ngày
+                                    </Badge>
+                                  )}
+                                </div>
+                                {c.issuer && (
+                                  <div className="text-[10px] text-gray-400 truncate max-w-[160px]" title={c.issuer}>
+                                    CA: {c.issuer}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <Badge variant="outline" className="text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200">
+                                <CheckCircle2 className="h-3 w-3 mr-1 text-emerald-600" />
+                                Active Pair
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1 flex-wrap">
@@ -705,6 +777,37 @@ export default function CertificatesPage() {
           description="Nội dung mã hóa Certificate PEM và danh sách SNI Domains liên kết"
         >
           <div className="space-y-4">
+            {selectedCertToView.expiry_date && (
+              <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-xs">
+                <div>
+                  <span className="text-gray-500 block">Thời hạn hết hạn:</span>
+                  <span className="font-mono font-medium text-gray-900 dark:text-gray-100">
+                    {new Date(selectedCertToView.expiry_date).toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">Trạng thái:</span>
+                  {selectedCertToView.is_expired ? (
+                    <Badge variant="destructive" className="text-[10px]">Đã hết hạn ({selectedCertToView.days_until_expiry} ngày)</Badge>
+                  ) : (
+                    <Badge variant="success" className="text-[10px]">Còn {selectedCertToView.days_until_expiry} ngày</Badge>
+                  )}
+                </div>
+                {selectedCertToView.issuer && (
+                  <div className="col-span-2">
+                    <span className="text-gray-500 block">Nhà phát hành (Issuer):</span>
+                    <span className="font-mono text-gray-800 dark:text-gray-200">{selectedCertToView.issuer}</span>
+                  </div>
+                )}
+                {selectedCertToView.subject && (
+                  <div className="col-span-2">
+                    <span className="text-gray-500 block">Chủ thể (Subject):</span>
+                    <span className="font-mono text-gray-800 dark:text-gray-200">{selectedCertToView.subject}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <span className="text-xs font-semibold text-gray-700">Domain SNIs:</span>
               <div className="flex gap-1.5 flex-wrap mt-1">

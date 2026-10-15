@@ -184,14 +184,19 @@ type KongUpstreamHealth struct {
 }
 
 type KongCertificate struct {
-	ID        string               `json:"id,omitempty"`
-	Cert      string               `json:"cert"`
-	Key       string               `json:"key"`
-	CertAlt   string               `json:"cert_alt,omitempty"`
-	KeyAlt    string               `json:"key_alt,omitempty"`
-	SNIs      []string             `json:"snis,omitempty"`
-	Tags      []string             `json:"tags,omitempty"`
-	CreatedAt int64                `json:"created_at,omitempty"`
+	ID              string               `json:"id,omitempty"`
+	Cert            string               `json:"cert"`
+	Key             string               `json:"key"`
+	CertAlt         string               `json:"cert_alt,omitempty"`
+	KeyAlt          string               `json:"key_alt,omitempty"`
+	SNIs            []string             `json:"snis,omitempty"`
+	Tags            []string             `json:"tags,omitempty"`
+	CreatedAt       int64                `json:"created_at,omitempty"`
+	ExpiryDate      string               `json:"expiry_date,omitempty"`
+	DaysUntilExpiry int                  `json:"days_until_expiry,omitempty"`
+	IsExpired       bool                 `json:"is_expired,omitempty"`
+	Issuer          string               `json:"issuer,omitempty"`
+	Subject         string               `json:"subject,omitempty"`
 }
 
 type KongSNI struct {
@@ -231,11 +236,13 @@ type KongStatus struct {
 }
 
 type KongNodeInfo struct {
-	Hostname   string                 `json:"hostname"`
-	Version    string                 `json:"version"`
-	LuaVersion string                 `json:"lua_version"`
-	Tagline    string                 `json:"tagline"`
-	Plugins    map[string]interface{} `json:"plugins"`
+	Hostname      string                 `json:"hostname"`
+	Version       string                 `json:"version"`
+	LuaVersion    string                 `json:"lua_version"`
+	Tagline       string                 `json:"tagline"`
+	Plugins       map[string]interface{} `json:"plugins"`
+	Configuration map[string]interface{} `json:"configuration,omitempty"`
+	Topology      string                 `json:"topology,omitempty"` // "traditional", "db_less", "hybrid_cp", "hybrid_dp"
 }
 
 type KongClient interface {
@@ -391,11 +398,59 @@ type KongUsecase interface {
 
 	// Declarative GitOps & Snapshots
 	DumpDeclarativeConfig(ctx context.Context, clusterID int32) (*KongDeclarativeConfig, error)
+	DiffDeclarativeConfig(ctx context.Context, clusterID int32, config *KongDeclarativeConfig) (*KongDiffSummary, error)
 	SyncDeclarativeConfig(ctx context.Context, clusterID int32, config *KongDeclarativeConfig) (*KongDiffSummary, error)
 	CreateSnapshot(ctx context.Context, clusterID int32, name, description string) (*Snapshot, error)
 	ListSnapshots(ctx context.Context, clusterID int32) ([]Snapshot, error)
 	RestoreSnapshot(ctx context.Context, clusterID int32, snapshotID int64) (*KongDiffSummary, error)
 	DeleteSnapshot(ctx context.Context, snapshotID int64) error
+
+	// Operational Diagnostics & Request Testing
+	TestRequest(ctx context.Context, clusterID int32, req *TestRequestInput) (*TestRequestResult, error)
+	RunDiagnostics(ctx context.Context, clusterID int32, input *DiagnosticsInput) (*DiagnosticsResult, error)
+
+	// Environment Promotion (DEV -> STG -> PROD)
+	PromoteConfig(ctx context.Context, sourceClusterID, targetClusterID int32) (*KongDiffSummary, error)
+}
+
+type DiagnosticsInput struct {
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	Protocol string `json:"protocol"` // "tcp", "tls", "http", "https"
+	Path     string `json:"path,omitempty"`
+	Timeout  int    `json:"timeout,omitempty"` // Seconds
+}
+
+type DiagnosticsStep struct {
+	Step      string  `json:"step"`   // "DNS", "TCP_CONNECT", "TLS_HANDSHAKE", "HTTP_PROBE"
+	Status    string  `json:"status"` // "SUCCESS", "FAILED", "SKIPPED"
+	Message   string  `json:"message"`
+	LatencyMS float64 `json:"latency_ms"`
+}
+
+type DiagnosticsResult struct {
+	Target  string            `json:"target"`
+	Success bool              `json:"success"`
+	TotalMS float64           `json:"total_ms"`
+	Steps   []DiagnosticsStep `json:"steps"`
+	Error   string            `json:"error,omitempty"`
+}
+
+type TestRequestInput struct {
+	Method  string            `json:"method"`
+	URL     string            `json:"url"` // Proxy URL or path
+	Headers map[string]string `json:"headers,omitempty"`
+	Body    string            `json:"body,omitempty"`
+	Timeout int               `json:"timeout,omitempty"` // Seconds
+}
+
+type TestRequestResult struct {
+	StatusCode int                 `json:"status_code"`
+	StatusText string              `json:"status_text"`
+	LatencyMS  float64             `json:"latency_ms"`
+	Headers    map[string][]string `json:"headers"`
+	Body       string              `json:"body"`
+	SizeBytes  int64               `json:"size_bytes"`
 }
 
 type KongDeclarativeConsumer struct {

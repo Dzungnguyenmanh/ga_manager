@@ -10,7 +10,6 @@ import (
 	"kong-manager-backend/internal/delivery/http/router"
 	"kong-manager-backend/internal/infrastructure/kong"
 	"kong-manager-backend/internal/repository"
-	"kong-manager-backend/internal/repository/db"
 	"kong-manager-backend/internal/usecase"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,9 +22,12 @@ func initDatabaseSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		name VARCHAR(100) NOT NULL,
 		url VARCHAR(255) NOT NULL,
 		admin_token VARCHAR(255),
+		environment VARCHAR(20) DEFAULT 'DEV',
 		created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 	);
+
+	ALTER TABLE kong_clusters ADD COLUMN IF NOT EXISTS environment VARCHAR(20) DEFAULT 'DEV';
 
 	CREATE TABLE IF NOT EXISTS users (
 		id SERIAL PRIMARY KEY,
@@ -44,13 +46,25 @@ func initDatabaseSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		config_json JSONB NOT NULL,
 		created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 	);
+
+	CREATE TABLE IF NOT EXISTS audit_logs (
+		id SERIAL PRIMARY KEY,
+		cluster_id INT,
+		user_id INT,
+		username VARCHAR(50),
+		action VARCHAR(100) NOT NULL,
+		resource VARCHAR(100) NOT NULL,
+		resource_id VARCHAR(100),
+		details JSONB,
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+	);
 	`
 	_, err := pool.Exec(ctx, schema)
 	return err
 }
 
 func main() {
-	log.Println("Starting Kong Manager Backend...")
+	log.Println("Starting Gateway Manager Backend...")
 
 	// 1. Connect to PostgreSQL
 	dbUrl := os.Getenv("DATABASE_URL")
@@ -71,20 +85,19 @@ func main() {
 		log.Println("Database schema checked and verified successfully.")
 	}
 
-	queries := db.New(pool)
-
 	// 2. Initialize Repositories and Infrastructure
-	clusterRepo := repository.NewClusterRepository(queries)
+	clusterRepo := repository.NewClusterRepository(pool)
 	snapshotRepo := repository.NewSnapshotRepository(pool)
+	auditRepo := repository.NewAuditRepository(pool)
 	kongClient := kong.NewKongClient()
 
 	// 3. Initialize Usecases
 	clusterUsecase := usecase.NewClusterUsecase(clusterRepo)
-	kongUsecase := usecase.NewKongUsecase(kongClient, clusterRepo, snapshotRepo)
+	kongUsecase := usecase.NewKongUsecase(kongClient, clusterRepo, snapshotRepo, auditRepo)
 
 	// 4. Initialize Handlers
 	clusterHandler := handlers.NewClusterHandler(clusterUsecase)
-	kongHandler := handlers.NewKongHandler(kongUsecase)
+	kongHandler := handlers.NewKongHandler(kongUsecase, auditRepo)
 
 	// 5. Setup Router
 	r := router.SetupRouter(clusterHandler, kongHandler)

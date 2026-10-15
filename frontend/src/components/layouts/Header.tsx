@@ -2,17 +2,26 @@
 
 import { ClusterSelector } from '@/components/clusters/ClusterSelector';
 import { useAuthStore } from '@/store/auth';
-import { LogOut, User as UserIcon, Shield } from 'lucide-react';
+import { useClusterStore } from '@/store/cluster';
+import { LogOut, User as UserIcon, Shield, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 
 export function Header() {
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { activeCluster } = useClusterStore();
 
   return (
     <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between border-b border-gray-200 bg-white/95 px-8 backdrop-blur">
       <div className="flex items-center gap-4">
         <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Cluster:</span>
         <ClusterSelector />
+
+        {activeCluster?.environment === 'PROD' && (
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-300">
+            <ShieldAlert className="h-3.5 w-3.5 text-rose-600" />
+            MÔI TRƯỜNG PRODUCTION
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-4">

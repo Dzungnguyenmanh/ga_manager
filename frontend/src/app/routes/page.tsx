@@ -26,9 +26,11 @@ import {
   ShieldAlert,
   SlidersHorizontal,
   Check,
-  X
+  X,
+  Send,
 } from 'lucide-react';
 import Link from 'next/link';
+import { ApiTestModal } from '@/components/routes/ApiTestModal';
 
 interface HeaderPair {
   key: string;
@@ -48,6 +50,8 @@ export default function RoutesPage() {
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+  const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
+  const [testTargetRoute, setTestTargetRoute] = React.useState<KongRoute | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<'basic' | 'advanced'>('basic');
 
@@ -258,6 +262,23 @@ export default function RoutesPage() {
       return;
     }
 
+    const payload = buildPayload();
+    // Validate route conflict in same cluster (matching duplicate host + path)
+    const newPaths = payload.paths || [];
+    const newHosts = payload.hosts || [];
+    const conflicting = routes.find((r) => {
+      const matchPath = (r.paths || []).some((p) => newPaths.includes(p));
+      const matchHost = newHosts.length === 0 || (r.hosts || []).some((h) => newHosts.includes(h));
+      const matchMethod = !payload.methods || payload.methods.length === 0 || !r.methods || r.methods.length === 0 || r.methods.some((m) => (payload.methods || []).includes(m));
+      return matchPath && matchHost && matchMethod;
+    });
+
+    if (conflicting) {
+      if (!confirm(`⚠️ CẢNH BÁO XUNG ĐỘT ROUTE (Route Conflict):\nRoute "${conflicting.name || conflicting.id}" đã bắt trùng Path (${(conflicting.paths || []).join(', ')}) và Host. Bạn có chắc chắn muốn tạo Route này không?`)) {
+        return;
+      }
+    }
+
     try {
       setIsSubmitting(true);
       const payload = buildPayload();
@@ -277,9 +298,26 @@ export default function RoutesPage() {
     e.preventDefault();
     if (!selectedRoute) return;
 
+    const payload = buildPayload();
+    // Validate route conflict in same cluster (matching duplicate host + path, excluding current route)
+    const newPaths = payload.paths || [];
+    const newHosts = payload.hosts || [];
+    const conflicting = routes.find((r) => {
+      if (r.id === selectedRoute.id) return false;
+      const matchPath = (r.paths || []).some((p) => newPaths.includes(p));
+      const matchHost = newHosts.length === 0 || (r.hosts || []).some((h) => newHosts.includes(h));
+      const matchMethod = !payload.methods || payload.methods.length === 0 || !r.methods || r.methods.length === 0 || r.methods.some((m) => (payload.methods || []).includes(m));
+      return matchPath && matchHost && matchMethod;
+    });
+
+    if (conflicting) {
+      if (!confirm(`⚠️ CẢNH BÁO XUNG ĐỘT ROUTE (Route Conflict):\nRoute "${conflicting.name || conflicting.id}" đã bắt trùng Path (${(conflicting.paths || []).join(', ')}) và Host. Bạn có chắc chắn muốn lưu cập nhật Route này không?`)) {
+        return;
+      }
+    }
+
     try {
       setIsSubmitting(true);
-      const payload = buildPayload();
       const res = await api.patch(`/api/kong/routes/${selectedRoute.id}`, payload);
       setRoutes((prev) => prev.map((r) => (r.id === selectedRoute.id ? res.data : r)));
       setIsEditModalOpen(false);
@@ -292,14 +330,26 @@ export default function RoutesPage() {
   };
 
   // Delete route in Kong
-  const handleDelete = async (id: string) => {
-    if (confirm('Bạn có chắc muốn xóa Route này khỏi Kong Gateway?')) {
-      try {
-        await api.delete(`/api/kong/routes/${id}`);
-        setRoutes((prev) => prev.filter((r) => r.id !== id));
-      } catch (err: any) {
-        alert(`Lỗi khi xóa Route trên Kong: ${err.response?.data?.error || err.message}`);
+  const handleDelete = async (id: string, routeName?: string) => {
+    if (activeCluster?.environment === 'PROD') {
+      const confirmed = prompt(
+        `⚠️ CẢNH BÁO: Bạn đang thao tác trên môi trường PRODUCTION (${activeCluster.name})!\nVui lòng nhập tên Route "${routeName || id}" để xác nhận xóa:`
+      );
+      if (confirmed !== (routeName || id)) {
+        alert('Tên Route không khớp. Đã hủy thao tác xóa an toàn.');
+        return;
       }
+    } else {
+      if (!confirm(`Bạn có chắc muốn xóa Route "${routeName || id}" khỏi Kong Gateway?`)) {
+        return;
+      }
+    }
+
+    try {
+      await api.delete(`/api/kong/routes/${id}`);
+      setRoutes((prev) => prev.filter((r) => r.id !== id));
+    } catch (err: any) {
+      alert(`Lỗi khi xóa Route trên Kong: ${err.response?.data?.error || err.message}`);
     }
   };
 
@@ -334,6 +384,18 @@ export default function RoutesPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setTestTargetRoute(null);
+                setIsTestModalOpen(true);
+              }}
+              className="text-xs bg-white text-blue-700 border-blue-200 hover:bg-blue-50"
+            >
+              <Send className="h-3.5 w-3.5 mr-1.5 text-blue-600" />
+              Kiểm thử API
+            </Button>
             <Button variant="outline" size="sm" onClick={fetchData} disabled={isLoading} className="text-xs">
               <RefreshCw className={`h-4 w-4 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
               Làm mới
@@ -508,6 +570,19 @@ export default function RoutesPage() {
                             <Button
                               variant="outline"
                               size="sm"
+                              onClick={() => {
+                                setTestTargetRoute(rt);
+                                setIsTestModalOpen(true);
+                              }}
+                              className="h-7 text-xs bg-white text-blue-700 border-blue-200 hover:bg-blue-50"
+                              title="Kiểm thử Route"
+                            >
+                              <Send className="h-3.5 w-3.5 mr-1 text-blue-600" />
+                              Test
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() => handleOpenEditModal(rt)}
                               className="h-7 text-xs bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50"
                               title="Chỉnh sửa Route"
@@ -518,7 +593,7 @@ export default function RoutesPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleDelete(rt.id)}
+                              onClick={() => handleDelete(rt.id, rt.name)}
                               className="h-7 w-7 text-gray-400 hover:text-red-600 hover:bg-red-50"
                               title="Xóa Route"
                             >
@@ -1128,6 +1203,16 @@ export default function RoutesPage() {
           </div>
         </form>
       </Modal>
+
+      {/* API Test Request Builder Modal */}
+      <ApiTestModal
+        isOpen={isTestModalOpen}
+        onClose={() => {
+          setIsTestModalOpen(false);
+          setTestTargetRoute(null);
+        }}
+        route={testTargetRoute}
+      />
     </AppLayout>
   );
 }

@@ -10,14 +10,15 @@ export interface ModalProps {
   description?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  maxWidth?: string;
 }
 
-export function Modal({ isOpen, onClose, title, description, children, footer }: ModalProps) {
+export function Modal({ isOpen, onClose, title, description, children, footer, maxWidth = 'max-w-lg' }: ModalProps) {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4 animate-in fade-in">
-      <div className="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-xl border border-gray-200">
+      <div className={cn("relative w-full rounded-xl bg-white p-6 shadow-xl border border-gray-200", maxWidth)}>
         <div className="flex items-center justify-between pb-4 border-b border-gray-100">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">{title}</h3>

@@ -39,6 +39,7 @@ func SetupRouter(
 		clusters.GET("/:id", clusterHandler.GetByID)
 		clusters.PATCH("/:id", clusterHandler.Update)
 		clusters.DELETE("/:id", clusterHandler.Delete)
+		clusters.POST("/promote", kongHandler.PromoteConfig)
 	}
 
 	// Kong proxy routes (requires cluster ID header)
@@ -122,12 +123,20 @@ func SetupRouter(
 
 		// Declarative GitOps & Snapshots
 		kong.GET("/declarative/dump", kongHandler.DumpDeclarativeConfig)
+		kong.POST("/declarative/diff", kongHandler.DiffDeclarativeConfig)
 		kong.POST("/declarative/sync", kongHandler.SyncDeclarativeConfig)
 		kong.GET("/snapshots", kongHandler.ListSnapshots)
 		kong.POST("/snapshots", kongHandler.CreateSnapshot)
 		kong.POST("/snapshots/:snapshotId/restore", kongHandler.RestoreSnapshot)
 		kong.DELETE("/snapshots/:snapshotId", kongHandler.DeleteSnapshot)
+
+		// Operational Diagnostics & Request Testing
+		kong.POST("/test-request", kongHandler.TestRequest)
+		kong.POST("/diagnostics", kongHandler.RunDiagnostics)
 	}
+
+	// Audit Logs
+	api.GET("/audit-logs", kongHandler.ListAuditLogs)
 
 	return r
 }

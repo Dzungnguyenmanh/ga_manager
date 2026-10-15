@@ -1,0 +1,160 @@
+Production Analysis
+
+Phân tích năng lực quản lý API Gateway cho môi trường production
+
+Sản phẩm: Kongmanager  |  Phiên bản: 1.0  |  Ngày: 11/10/2026
+
+1. Phạm vi và yêu cầu production
+
+Tài liệu này xác định năng lực cần có khi Kongmanager được sử dụng để quản trị hệ thống thật, nơi một thay đổi sai có thể làm gián đoạn nhiều API và ảnh hưởng trực tiếp đến người dùng hoặc giao dịch.
+
+Hỗ trợ nhiều cluster, nhiều môi trường và nhiều vùng triển khai.
+
+Không tạo single point of failure trong control plane quản lý.
+
+Bảo vệ credential, certificate, token và dữ liệu audit.
+
+Có quy trình thay đổi, phê duyệt, triển khai, xác minh và rollback.
+
+Có số liệu vận hành, log, trace, cảnh báo và runbook cho sự cố.
+
+Tương thích với traditional, DB-less, hybrid, Kubernetes và GitOps.
+
+2. Kiến trúc năng lực quản lý
+
+3. Tính năng quản lý cấu hình production
+
+4. Bảo mật và quản trị truy cập
+
+5. Sẵn sàng cao, backup và khôi phục thảm họa
+
+6. Quan sát hệ thống và vận hành 24/7
+
+7. Quản trị thay đổi và GitOps
+
+Mọi thay đổi production phải có change ID, người thực hiện, lý do, owner và mức độ rủi ro.
+
+Quy trình chuẩn: Draft → policy check → diff → impact analysis → approval → deploy → verify → close.
+
+Git là nguồn cấu hình chuẩn khi tổ chức dùng GitOps; UI phải tạo commit/pull request hoặc chuyển sang read-only.
+
+Drift detection phải chỉ rõ khác biệt giữa desired state và actual state, nguồn tạo thay đổi và thời điểm phát hiện.
+
+Promotion giữa DEV/STG/PROD phải tách giá trị môi trường như host, certificate, secret và quota.
+
+Canary hoặc blue-green phải có điều kiện dừng tự động dựa trên error rate, latency và health check.
+
+Rollback cần được kiểm chứng bằng dry-run và có bước xác nhận traffic sau khi khôi phục.
+
+8. Hiệu năng và khả năng mở rộng
+
+9. Vòng đời API và quản lý người dùng API
+
+10. Tiêu chí nghiệm thu production
+
+Không có thao tác quản trị production nào bỏ qua authentication, authorization và audit.
+
+Tạo, sửa, kiểm tra, deploy và rollback một API hoàn chỉnh mà không làm mất secret.
+
+Mất một instance Kongmanager vẫn giữ được khả năng quản trị.
+
+Mất một Gateway node hoặc Target không làm mất toàn bộ API nếu topology được thiết kế HA.
+
+Khôi phục cấu hình từ backup theo RPO/RTO đã duyệt và có bằng chứng kiểm thử.
+
+Phát hiện được drift, lỗi certificate, lỗi upstream, lỗi auth và lỗi đồng bộ cấu hình.
+
+Mọi thay đổi production có diff, impact analysis, approval và kết quả verify.
+
+Có dashboard, alert, log, trace, incident record và runbook cho các lỗi phổ biến.
+
+Có kiểm tra bảo mật, tải, failover, backup/restore và nâng cấp trước khi go-live.
+
+11. Kết luận kiến trúc sản phẩm
+
+Kongmanager cho production cần được thiết kế như một nền tảng control plane có kiểm soát thay đổi, không chỉ là giao diện CRUD cho Admin API. Giá trị cốt lõi nằm ở khả năng bảo vệ môi trường production, vận hành liên tục, giải thích được trạng thái Gateway và khôi phục nhanh khi có sự cố.
+
+Phụ lục: nguồn tham khảo kỹ thuật
+
+Kong Gateway entities: https://developer.konghq.com/gateway/entities/
+
+Deployment topologies: https://developer.konghq.com/gateway/deployment-topologies/
+
+Upstreams and targets: https://developer.konghq.com/gateway/entities/upstream/
+
+Plugins: https://developer.konghq.com/gateway/entities/plugin/
+
+decK gateway diff/sync: https://developer.konghq.com/deck/gateway/
+
+
+--- TABLE ---
+Mục tiêu production | Nguyên tắc thiết kế | Kết quả cần đạt
+Quản lý Gateway an toàn, sẵn sàng cao và có thể vận hành liên tục 24/7 cho các API quan trọng. | Configuration as code, least privilege, mọi thay đổi có kiểm soát, mọi sự cố có thể quan sát và khôi phục. | Gateway Manager trở thành control plane vận hành: quản lý cấu hình, traffic, security, topology, sự cố và vòng đời API.
+
+--- TABLE ---
+Lớp | Năng lực production | Yêu cầu bắt buộc
+Control plane | Quản lý connection, topology, phiên bản, capability và trạng thái đồng bộ | HA, timeout, retry, health check, audit
+Configuration | Service, Route, Upstream, Target, Plugin, Consumer, Certificate, Vault reference | Schema validation, dependency graph, diff, dry-run
+Traffic & security | Routing, load balancing, rate limit, auth, mTLS, WAF integration, policy | Policy theo scope, secret masking, policy enforcement
+Operations | Metrics, log, trace, alert, diagnostics, incident view | Correlation ID, retention, RBAC, SLO
+Delivery | GitOps, promotion, drift, canary, blue-green, rollback | Approval gate, immutable version, evidence
+API platform | Catalog, lifecycle, OpenAPI, portal, quota, usage, ownership | API owner, contract, deprecation và consumer impact
+
+--- TABLE ---
+Nhóm | Tính năng | Tiêu chí production
+Gateway & cluster | Connection, topology, node, version, plugin compatibility | Phát hiện mismatch trước khi thay đổi; health của từng node
+Service/Route | Host, path, method, protocol, timeout, retry, request/response behavior | Validate xung đột route; preview ảnh hưởng; chuẩn hóa naming/tag
+Upstream/Target | Load balancing, weight, active/passive health check, circuit behavior | Không gửi traffic vào target lỗi; theo dõi lịch sử trạng thái
+Plugin & policy | Global, service, route, consumer, group scope; schema theo version | Policy precedence rõ ràng; cảnh báo cấu hình nguy hiểm
+Consumer & access | Consumer, credential, group, quota, key rotation | Không hiển thị secret; rotation không làm gián đoạn client
+Certificate | Certificate, SNI, chain, expiry, renewal | Cảnh báo 30/14/7 ngày; kiểm tra chain và kế hoạch thay thế
+Secrets | Vault/KMS reference, masking, access log | Secret không nằm trong export, log hoặc diff dạng rõ
+Metadata | Owner, domain, environment, criticality, data classification | Bắt buộc owner và mức độ quan trọng cho API production
+
+--- TABLE ---
+Khu vực | Năng lực | Mức yêu cầu
+Authentication | SSO OIDC/SAML, MFA, session policy, break-glass account | Bắt buộc cho quản trị production
+Authorization | RBAC/ABAC theo tổ chức, môi trường, domain, API và hành động | Deny by default; tách quyền xem, sửa, deploy, approve
+Separation of duties | Người tạo thay đổi không tự phê duyệt production | Bắt buộc với thay đổi có rủi ro cao
+Audit | User, timestamp, source IP, action, before/after, request ID, result | Lưu bất biến, tìm kiếm được, tích hợp SIEM
+Data protection | Encryption at rest/in transit, secret masking, key rotation | Không cho phép tải secret dạng rõ
+Security policy | Plugin/policy baseline, forbidden config, mandatory tags | Chặn cấu hình vi phạm trước khi apply
+Access review | Review quyền định kỳ, user inactive, credential expiry | Có báo cáo và bằng chứng kiểm tra
+
+--- TABLE ---
+Năng lực | Thiết kế đề xuất | Tiêu chí nghiệm thu
+Control plane HA | Ít nhất 2 instance, stateless UI/API, load balancer, session externalized | Mất một instance không làm mất thao tác hoặc dữ liệu
+Gateway topology | Quản lý traditional, DB-less và hybrid; hiển thị CP/DP | Biết cấu hình đang ở đâu và trạng thái phân phối
+Database | HA database, backup tự động, encryption, connection pool | Có kiểm tra restore định kỳ
+Configuration backup | Snapshot định kỳ, version immutable, lưu ngoài cluster | Khôi phục được theo thời điểm và môi trường
+DR | RPO/RTO theo mức độ quan trọng của API | Có runbook và diễn tập failover
+Rollback | Rollback cấu hình có dry-run và verify sau apply | Khôi phục nhanh về phiên bản đã kiểm chứng
+Upgrade | Compatibility check, migration plan, canary control plane | Nâng cấp không làm mất cấu hình hoặc audit
+
+--- TABLE ---
+Nhóm | Dữ liệu cần có | Hành động của quản trị viên
+Golden signals | Traffic, error, latency, saturation | Nhận diện suy giảm theo API, route, consumer, node
+Gateway health | Node, config sync, worker, memory, CPU, DB connectivity | Xác định component gây lỗi
+Upstream health | Target state, response code, timeout, connect error | Cô lập target lỗi hoặc giảm traffic
+Security signals | Auth failure, anomalous rate, credential misuse | Khóa credential, tăng policy, chuyển incident
+Logs/traces | Request ID, trace ID, route, upstream, status, latency | Điều tra một request xuyên suốt
+Alerting | Threshold, anomaly, certificate, drift, backup failure | Pager/on-call theo severity
+Incident | Timeline, owner, severity, runbook, evidence, postmortem | Theo dõi đến khi đóng và rút kinh nghiệm
+
+--- TABLE ---
+Khu vực | Yêu cầu cần phân tích | Chỉ số nghiệm thu mẫu
+UI/API control plane | Concurrent admin users, list/search, diff, export | p95 thao tác đọc < 2 giây ở tải chuẩn
+Configuration apply | Số entity, plugin, cluster, parallelism | Không timeout; có progress và retry an toàn
+Gateway impact | Ảnh hưởng của policy, health check, logging, tracing | Không làm tăng latency vượt SLO đã duyệt
+Data retention | Audit, metrics, logs, snapshots | Retention theo policy; không làm đầy storage
+Multi-cluster | Số cluster/node và tần suất polling | Không gây áp lực bất thường lên Admin API
+Scale-out | Horizontal scaling của UI/API/worker | Tăng tải không cần thay đổi kiến trúc
+
+--- TABLE ---
+Năng lực | Mô tả production
+API catalog | API name, owner, domain, criticality, version, environment, dependencies
+Contract | OpenAPI import/validation, breaking-change review, endpoint ownership
+Lifecycle | Draft, review, active, deprecated, retired; ngày và lý do chuyển trạng thái
+Consumer onboarding | Đăng ký ứng dụng, xin quyền, phê duyệt, cấp credential, rotation
+Usage & quota | Theo dõi theo consumer/app/API/package; quota và rate policy
+Communication | Thông báo deprecation, maintenance window, incident và thay đổi contract

@@ -15,6 +15,7 @@ import {
   ArrowDown,
   Zap,
   FileCode,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -71,6 +72,13 @@ const navSections: NavSection[] = [
     ],
   },
   {
+    title: 'GOVERNANCE & AUDIT',
+    description: 'Truy vết & Kiểm toán',
+    items: [
+      { name: 'Audit Logs', href: '/audit-logs', icon: History, badge: 'Audit' },
+    ],
+  },
+  {
     title: 'SYSTEM & CLUSTERS',
     items: [
       { name: 'Certificates & SNIs', href: '/certificates', icon: ShieldCheck },
@@ -87,11 +95,11 @@ export function Sidebar() {
       {/* Brand Header */}
       <div className="flex h-16 items-center gap-3 border-b border-gray-200 px-5 bg-slate-50/50">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-lg shadow-sm">
-          K
+          G
         </div>
         <div>
-          <h1 className="font-bold text-gray-900 text-base leading-none tracking-tight">Kong Manager</h1>
-          <p className="text-[11px] text-gray-500 mt-1 font-medium">Gateway Admin UI</p>
+          <h1 className="font-bold text-gray-900 text-base leading-none tracking-tight">Gateway Manager</h1>
+          <p className="text-[11px] text-gray-500 mt-1 font-medium">Enterprise Gateway UI</p>
         </div>
       </div>
 

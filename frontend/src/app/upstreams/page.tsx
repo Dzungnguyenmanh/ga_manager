@@ -36,6 +36,7 @@ import {
   Info
 } from 'lucide-react';
 import Link from 'next/link';
+import { DiagnosticsModal } from '@/components/diagnostics/DiagnosticsModal';
 
 interface UpstreamItem extends KongUpstream {
   targets?: KongTarget[];
@@ -56,6 +57,12 @@ export default function UpstreamsPage() {
   const [isTargetsModalOpen, setIsTargetsModalOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [modalTab, setModalTab] = React.useState<'basic' | 'healthchecks'>('basic');
+
+  // Diagnostics Modal State
+  const [diagnosticsOpen, setDiagnosticsOpen] = React.useState(false);
+  const [diagHost, setDiagHost] = React.useState('');
+  const [diagPort, setDiagPort] = React.useState(80);
+  const [diagProtocol, setDiagProtocol] = React.useState('http');
 
   // Selected Upstream for Editing or Managing Targets
   const [selectedUpstream, setSelectedUpstream] = React.useState<UpstreamItem | null>(null);
@@ -328,15 +335,40 @@ export default function UpstreamsPage() {
     }
   };
 
-  // 6. Delete Upstream
+  // 6. Delete Upstream with Dependency Impact Analysis & PROD confirmation
   const handleDeleteUpstream = async (upstream: UpstreamItem) => {
-    if (confirm(`Bạn có chắc chắn muốn xóa Upstream "${upstream.name}" khỏi Kong Gateway?`)) {
-      try {
-        await api.delete(`/api/kong/upstreams/${upstream.id}`);
-        setUpstreams((prev) => prev.filter((u) => u.id !== upstream.id));
-      } catch (err: any) {
-        alert(`Lỗi khi xóa Upstream trên Kong: ${err.response?.data?.error || err.message}`);
+    try {
+      // 1. Dependency check: Fetch Services to see if any service has host = upstream.name
+      const servicesRes = await api.get('/api/kong/services').catch(() => ({ data: [] }));
+      const dependentServices = (servicesRes.data || []).filter((s: any) => s.host === upstream.name);
+
+      if (dependentServices.length > 0) {
+        const svcNames = dependentServices.map((s: any) => s.name || s.id).join(', ');
+        const confirmMsg = `⚠️ CẢNH BÁO TÁC ĐỘNG (Impact Analysis):\nUpstream "${upstream.name}" đang được sử dụng làm backend host bởi ${dependentServices.length} Service:\n[${svcNames}]\n\nXóa Upstream này sẽ khiến các Service trên bị lỗi 502/503 Bad Gateway khi định tuyến! Bạn có chắc chắn muốn tiếp tục không?`;
+        if (!confirm(confirmMsg)) {
+          return;
+        }
       }
+
+      // 2. PROD safety check
+      if (activeCluster?.environment === 'PROD') {
+        const confirmed = prompt(
+          `⚠️ CẢNH BÁO: Môi trường PRODUCTION (${activeCluster.name})!\nVui lòng nhập tên Upstream "${upstream.name}" để xác nhận xóa:`
+        );
+        if (confirmed !== upstream.name) {
+          alert('Tên Upstream không khớp. Đã hủy xóa an toàn.');
+          return;
+        }
+      } else if (dependentServices.length === 0) {
+        if (!confirm(`Bạn có chắc chắn muốn xóa Upstream "${upstream.name}" khỏi Kong Gateway?`)) {
+          return;
+        }
+      }
+
+      await api.delete(`/api/kong/upstreams/${upstream.id}`);
+      setUpstreams((prev) => prev.filter((u) => u.id !== upstream.id));
+    } catch (err: any) {
+      alert(`Lỗi khi xóa Upstream trên Kong: ${err.response?.data?.error || err.message}`);
     }
   };
 
@@ -469,6 +501,19 @@ export default function UpstreamsPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDiagHost('');
+                setDiagPort(80);
+                setDiagProtocol('http');
+                setDiagnosticsOpen(true);
+              }}
+              className="text-xs border-blue-200 text-blue-700 hover:bg-blue-50"
+            >
+              <Activity className="h-3.5 w-3.5 mr-1.5 text-blue-600" />
+              Chẩn đoán mạng (Diagnostics)
+            </Button>
             <Button variant="outline" onClick={fetchUpstreams} className="text-xs">
               <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
               Làm mới
@@ -1090,6 +1135,22 @@ export default function UpstreamsPage() {
                             <Button
                               size="sm"
                               variant="outline"
+                              onClick={() => {
+                                const parts = t.target.split(':');
+                                setDiagHost(parts[0] || '');
+                                setDiagPort(Number(parts[1]) || 80);
+                                setDiagProtocol(parts[1] === '443' ? 'https' : 'http');
+                                setDiagnosticsOpen(true);
+                              }}
+                              className="h-7 text-[11px] px-2 text-blue-700 border-blue-200 hover:bg-blue-50"
+                              title="Chẩn đoán kết nối 4 chặng (DNS/TCP/TLS/HTTP)"
+                            >
+                              <Activity className="h-3 w-3 mr-1" />
+                              Chẩn đoán
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => handleSetTargetHealthy(t)}
                               className="h-7 text-[11px] px-2 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
                               title="Thủ công đánh dấu Healthy"
@@ -1139,6 +1200,15 @@ export default function UpstreamsPage() {
           </div>
         </Modal>
       )}
+
+      {/* Diagnostics Modal */}
+      <DiagnosticsModal
+        isOpen={diagnosticsOpen}
+        onClose={() => setDiagnosticsOpen(false)}
+        initialHost={diagHost}
+        initialPort={diagPort}
+        initialProtocol={diagProtocol}
+      />
     </AppLayout>
   );
 }

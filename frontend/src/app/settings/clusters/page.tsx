@@ -10,7 +10,7 @@ import { ClusterModal } from '@/components/clusters/ClusterModal';
 import { useClusterStore } from '@/store/cluster';
 import { KongCluster } from '@/types';
 import { api } from '@/lib/api';
-import { Plus, Server, Check, Edit2, Trash2, Wifi, Database, Loader2 } from 'lucide-react';
+import { Plus, Server, Check, Edit2, Trash2, Wifi, Database, Loader2, Eye, EyeOff, ShieldAlert } from 'lucide-react';
 
 export default function ClustersPage() {
   const { clusters, activeClusterId, setActiveCluster, setClusters, addCluster, removeCluster } =
@@ -18,6 +18,7 @@ export default function ClustersPage() {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingCluster, setEditingCluster] = React.useState<KongCluster | null>(null);
   const [testStatus, setTestStatus] = React.useState<Record<number, 'success' | 'error' | 'testing'>>({});
+  const [revealedTokens, setRevealedTokens] = React.useState<Record<number, boolean>>({});
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState('');
 
@@ -49,6 +50,7 @@ export default function ClustersPage() {
         name: data.name,
         url: data.url,
         admin_token: data.admin_token,
+        environment: data.environment || 'DEV',
       });
       const updatedCluster: KongCluster = res.data;
       const updatedList = clusters.map((c) => (c.id === data.id ? updatedCluster : c));
@@ -59,6 +61,7 @@ export default function ClustersPage() {
         name: data.name,
         url: data.url,
         admin_token: data.admin_token,
+        environment: data.environment || 'DEV',
       });
       const savedCluster: KongCluster = res.data;
       addCluster(savedCluster);
@@ -66,14 +69,26 @@ export default function ClustersPage() {
   };
 
   // Delete cluster from PostgreSQL
-  const handleDelete = async (id: number) => {
-    if (confirm('Bạn có chắc chắn muốn xóa cấu hình Cluster này khỏi cơ sở dữ liệu?')) {
-      try {
-        await api.delete(`/api/clusters/${id}`);
-        removeCluster(id);
-      } catch (err) {
-        alert('Lỗi khi xóa Cluster trong Database');
+  const handleDelete = async (cluster: KongCluster) => {
+    if (cluster.environment === 'PROD') {
+      const confirmed = prompt(
+        `⚠️ CẢNH BÁO NGUY HIỂM: Bạn đang muốn xóa Kong Cluster PRODUCTION "${cluster.name}"!\nNhập đúng tên "${cluster.name}" để xác nhận:`
+      );
+      if (confirmed !== cluster.name) {
+        alert('Tên không khớp. Đã hủy xóa.');
+        return;
       }
+    } else {
+      if (!confirm(`Bạn có chắc chắn muốn xóa cấu hình Cluster "${cluster.name}" khỏi cơ sở dữ liệu?`)) {
+        return;
+      }
+    }
+
+    try {
+      await api.delete(`/api/clusters/${cluster.id}`);
+      removeCluster(cluster.id);
+    } catch (err) {
+      alert('Lỗi khi xóa Cluster trong Database');
     }
   };
 
@@ -170,8 +185,9 @@ export default function ClustersPage() {
                   <TableRow>
                     <TableHead>Trạng thái</TableHead>
                     <TableHead>Tên Cluster</TableHead>
+                    <TableHead>Môi trường</TableHead>
                     <TableHead>Kong Admin URL</TableHead>
-                    <TableHead>Xác thực Token</TableHead>
+                    <TableHead>Admin Token (Bảo mật)</TableHead>
                     <TableHead>Kiểm tra kết nối</TableHead>
                     <TableHead className="text-right">Hành động</TableHead>
                   </TableRow>
@@ -198,10 +214,35 @@ export default function ClustersPage() {
                             <span>{cluster.name}</span>
                           </div>
                         </TableCell>
+                        <TableCell>
+                          {cluster.environment === 'PROD' ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-rose-50 text-rose-700 px-2 py-0.5 rounded-full border border-rose-300">
+                              <ShieldAlert className="h-3 w-3 text-rose-600" /> PROD
+                            </span>
+                          ) : cluster.environment === 'STG' ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-300">
+                              STG
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-300">
+                              DEV
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell className="font-mono text-xs text-gray-600">{cluster.url}</TableCell>
                         <TableCell>
                           {cluster.admin_token ? (
-                            <Badge variant="outline">Token Configured</Badge>
+                            <div className="flex items-center gap-1.5 font-mono text-xs text-gray-700">
+                              <span>{revealedTokens[cluster.id] ? cluster.admin_token : '••••••••••••'}</span>
+                              <button
+                                type="button"
+                                onClick={() => setRevealedTokens((prev) => ({ ...prev, [cluster.id]: !prev[cluster.id] }))}
+                                className="text-gray-400 hover:text-gray-700 p-0.5"
+                                title={revealedTokens[cluster.id] ? 'Ẩn Token' : 'Hiện Token'}
+                              >
+                                {revealedTokens[cluster.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                              </button>
+                            </div>
                           ) : (
                             <span className="text-xs text-gray-400">Không dùng token</span>
                           )}
@@ -249,8 +290,9 @@ export default function ClustersPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(cluster.id)}
-                            className="h-8 w-8 text-gray-500 hover:text-red-600"
+                            onClick={() => handleDelete(cluster)}
+                            className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                            title="Xóa Cluster"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

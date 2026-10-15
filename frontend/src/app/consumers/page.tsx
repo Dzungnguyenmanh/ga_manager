@@ -210,17 +210,29 @@ export default function ConsumersPage() {
     }
   };
 
-  const handleDeleteConsumer = async (id: string) => {
-    if (confirm('Bạn có chắc muốn xóa Consumer này khỏi Kong Gateway? Tất cả credentials liên kết sẽ bị thu hồi.')) {
-      try {
-        await api.delete(`/api/kong/consumers/${id}`);
-        setConsumers((prev) => prev.filter((c) => c.id !== id));
-        if (selectedConsumer?.id === id) {
-          setSelectedConsumer(null);
-        }
-      } catch (err: any) {
-        alert(`Lỗi khi xóa Consumer trên Kong: ${err.response?.data?.error || err.message}`);
+  const handleDeleteConsumer = async (id: string, username?: string) => {
+    if (activeCluster?.environment === 'PROD') {
+      const confirmed = prompt(
+        `⚠️ CẢNH BÁO: Môi trường PRODUCTION (${activeCluster.name})!\nVui lòng nhập tên Consumer "${username || id}" để xác nhận xóa:`
+      );
+      if (confirmed !== (username || id)) {
+        alert('Tên Consumer không khớp. Đã hủy xóa an toàn.');
+        return;
       }
+    } else {
+      if (!confirm('Bạn có chắc muốn xóa Consumer này khỏi Kong Gateway? Tất cả credentials liên kết sẽ bị thu hồi.')) {
+        return;
+      }
+    }
+
+    try {
+      await api.delete(`/api/kong/consumers/${id}`);
+      setConsumers((prev) => prev.filter((c) => c.id !== id));
+      if (selectedConsumer?.id === id) {
+        setSelectedConsumer(null);
+      }
+    } catch (err: any) {
+      alert(`Lỗi khi xóa Consumer trên Kong: ${err.response?.data?.error || err.message}`);
     }
   };
 
@@ -641,7 +653,7 @@ export default function ConsumersPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDeleteConsumer(c.id)}
+                          onClick={() => handleDeleteConsumer(c.id, c.username)}
                           className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50"
                           title="Xóa Consumer"
                         >

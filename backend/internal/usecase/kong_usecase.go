@@ -2,7 +2,15 @@ package usecase
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
+	"fmt"
+	"io"
+	"math"
+	"net"
+	"net/http"
+	"strings"
+	"time"
 
 	"kong-manager-backend/internal/domain"
 )
@@ -11,14 +19,35 @@ type kongUsecase struct {
 	kongClient   domain.KongClient
 	clusterRepo  domain.ClusterRepository
 	snapshotRepo domain.SnapshotRepository
+	auditRepo    domain.AuditRepository
 }
 
-func NewKongUsecase(client domain.KongClient, repo domain.ClusterRepository, snapshotRepo domain.SnapshotRepository) domain.KongUsecase {
+func NewKongUsecase(
+	client domain.KongClient,
+	repo domain.ClusterRepository,
+	snapshotRepo domain.SnapshotRepository,
+	auditRepo domain.AuditRepository,
+) domain.KongUsecase {
 	return &kongUsecase{
 		kongClient:   client,
 		clusterRepo:  repo,
 		snapshotRepo: snapshotRepo,
+		auditRepo:    auditRepo,
 	}
+}
+
+func (u *kongUsecase) logAudit(ctx context.Context, clusterID int32, action, resource, resourceID string, details map[string]any) {
+	if u.auditRepo == nil {
+		return
+	}
+	_ = u.auditRepo.Create(ctx, &domain.AuditLog{
+		ClusterID:  &clusterID,
+		Username:   "operator",
+		Action:     action,
+		Resource:   resource,
+		ResourceID: resourceID,
+		Details:    details,
+	})
 }
 
 func (u *kongUsecase) getClusterParams(ctx context.Context, clusterID int32) (string, string, error) {
@@ -46,7 +75,11 @@ func (u *kongUsecase) CreateService(ctx context.Context, clusterID int32, svc *d
 	if err != nil {
 		return nil, err
 	}
-	return u.kongClient.CreateService(ctx, url, token, svc)
+	res, err := u.kongClient.CreateService(ctx, url, token, svc)
+	if err == nil && res != nil {
+		u.logAudit(ctx, clusterID, "CREATE", "service", res.ID, map[string]any{"name": res.Name, "host": res.Host, "protocol": res.Protocol})
+	}
+	return res, err
 }
 
 func (u *kongUsecase) UpdateService(ctx context.Context, clusterID int32, svc *domain.KongService) (*domain.KongService, error) {
@@ -54,7 +87,11 @@ func (u *kongUsecase) UpdateService(ctx context.Context, clusterID int32, svc *d
 	if err != nil {
 		return nil, err
 	}
-	return u.kongClient.UpdateService(ctx, url, token, svc)
+	res, err := u.kongClient.UpdateService(ctx, url, token, svc)
+	if err == nil && res != nil {
+		u.logAudit(ctx, clusterID, "UPDATE", "service", svc.ID, map[string]any{"name": svc.Name, "host": svc.Host})
+	}
+	return res, err
 }
 
 func (u *kongUsecase) DeleteService(ctx context.Context, clusterID int32, serviceID string) error {
@@ -62,7 +99,11 @@ func (u *kongUsecase) DeleteService(ctx context.Context, clusterID int32, servic
 	if err != nil {
 		return err
 	}
-	return u.kongClient.DeleteService(ctx, url, token, serviceID)
+	err = u.kongClient.DeleteService(ctx, url, token, serviceID)
+	if err == nil {
+		u.logAudit(ctx, clusterID, "DELETE", "service", serviceID, nil)
+	}
+	return err
 }
 
 // -------------------------------------------------------------
@@ -82,7 +123,11 @@ func (u *kongUsecase) CreateRoute(ctx context.Context, clusterID int32, route *d
 	if err != nil {
 		return nil, err
 	}
-	return u.kongClient.CreateRoute(ctx, url, token, route)
+	res, err := u.kongClient.CreateRoute(ctx, url, token, route)
+	if err == nil && res != nil {
+		u.logAudit(ctx, clusterID, "CREATE", "route", res.ID, map[string]any{"name": res.Name, "paths": res.Paths, "methods": res.Methods})
+	}
+	return res, err
 }
 
 func (u *kongUsecase) UpdateRoute(ctx context.Context, clusterID int32, route *domain.KongRoute) (*domain.KongRoute, error) {
@@ -90,7 +135,11 @@ func (u *kongUsecase) UpdateRoute(ctx context.Context, clusterID int32, route *d
 	if err != nil {
 		return nil, err
 	}
-	return u.kongClient.UpdateRoute(ctx, url, token, route)
+	res, err := u.kongClient.UpdateRoute(ctx, url, token, route)
+	if err == nil && res != nil {
+		u.logAudit(ctx, clusterID, "UPDATE", "route", route.ID, map[string]any{"name": route.Name})
+	}
+	return res, err
 }
 
 func (u *kongUsecase) DeleteRoute(ctx context.Context, clusterID int32, routeID string) error {
@@ -98,7 +147,11 @@ func (u *kongUsecase) DeleteRoute(ctx context.Context, clusterID int32, routeID 
 	if err != nil {
 		return err
 	}
-	return u.kongClient.DeleteRoute(ctx, url, token, routeID)
+	err = u.kongClient.DeleteRoute(ctx, url, token, routeID)
+	if err == nil {
+		u.logAudit(ctx, clusterID, "DELETE", "route", routeID, nil)
+	}
+	return err
 }
 
 // -------------------------------------------------------------
@@ -118,7 +171,11 @@ func (u *kongUsecase) CreateConsumer(ctx context.Context, clusterID int32, consu
 	if err != nil {
 		return nil, err
 	}
-	return u.kongClient.CreateConsumer(ctx, url, token, consumer)
+	res, err := u.kongClient.CreateConsumer(ctx, url, token, consumer)
+	if err == nil && res != nil {
+		u.logAudit(ctx, clusterID, "CREATE", "consumer", res.ID, map[string]any{"username": res.Username, "custom_id": res.CustomID})
+	}
+	return res, err
 }
 
 func (u *kongUsecase) UpdateConsumer(ctx context.Context, clusterID int32, consumer *domain.KongConsumer) (*domain.KongConsumer, error) {
@@ -126,7 +183,11 @@ func (u *kongUsecase) UpdateConsumer(ctx context.Context, clusterID int32, consu
 	if err != nil {
 		return nil, err
 	}
-	return u.kongClient.UpdateConsumer(ctx, url, token, consumer)
+	res, err := u.kongClient.UpdateConsumer(ctx, url, token, consumer)
+	if err == nil && res != nil {
+		u.logAudit(ctx, clusterID, "UPDATE", "consumer", consumer.ID, map[string]any{"username": consumer.Username})
+	}
+	return res, err
 }
 
 func (u *kongUsecase) DeleteConsumer(ctx context.Context, clusterID int32, consumerID string) error {
@@ -134,7 +195,11 @@ func (u *kongUsecase) DeleteConsumer(ctx context.Context, clusterID int32, consu
 	if err != nil {
 		return err
 	}
-	return u.kongClient.DeleteConsumer(ctx, url, token, consumerID)
+	err = u.kongClient.DeleteConsumer(ctx, url, token, consumerID)
+	if err == nil {
+		u.logAudit(ctx, clusterID, "DELETE", "consumer", consumerID, nil)
+	}
+	return err
 }
 
 // -------------------------------------------------------------
@@ -154,7 +219,11 @@ func (u *kongUsecase) CreateKeyAuth(ctx context.Context, clusterID int32, consum
 	if err != nil {
 		return nil, err
 	}
-	return u.kongClient.CreateKeyAuth(ctx, url, token, consumerID, keyAuth)
+	res, err := u.kongClient.CreateKeyAuth(ctx, url, token, consumerID, keyAuth)
+	if err == nil && res != nil {
+		u.logAudit(ctx, clusterID, "CREATE", "key_auth", res.ID, map[string]any{"consumer_id": consumerID})
+	}
+	return res, err
 }
 
 func (u *kongUsecase) DeleteKeyAuth(ctx context.Context, clusterID int32, consumerID, keyID string) error {
@@ -162,7 +231,11 @@ func (u *kongUsecase) DeleteKeyAuth(ctx context.Context, clusterID int32, consum
 	if err != nil {
 		return err
 	}
-	return u.kongClient.DeleteKeyAuth(ctx, url, token, consumerID, keyID)
+	err = u.kongClient.DeleteKeyAuth(ctx, url, token, consumerID, keyID)
+	if err == nil {
+		u.logAudit(ctx, clusterID, "DELETE", "key_auth", keyID, map[string]any{"consumer_id": consumerID})
+	}
+	return err
 }
 
 func (u *kongUsecase) ListJWTs(ctx context.Context, clusterID int32, consumerID string) ([]domain.KongJWT, error) {
@@ -178,7 +251,11 @@ func (u *kongUsecase) CreateJWT(ctx context.Context, clusterID int32, consumerID
 	if err != nil {
 		return nil, err
 	}
-	return u.kongClient.CreateJWT(ctx, url, token, consumerID, jwt)
+	res, err := u.kongClient.CreateJWT(ctx, url, token, consumerID, jwt)
+	if err == nil && res != nil {
+		u.logAudit(ctx, clusterID, "CREATE", "jwt", res.ID, map[string]any{"consumer_id": consumerID, "key": res.Key, "algorithm": res.Algorithm})
+	}
+	return res, err
 }
 
 func (u *kongUsecase) DeleteJWT(ctx context.Context, clusterID int32, consumerID, jwtID string) error {
@@ -186,7 +263,11 @@ func (u *kongUsecase) DeleteJWT(ctx context.Context, clusterID int32, consumerID
 	if err != nil {
 		return err
 	}
-	return u.kongClient.DeleteJWT(ctx, url, token, consumerID, jwtID)
+	err = u.kongClient.DeleteJWT(ctx, url, token, consumerID, jwtID)
+	if err == nil {
+		u.logAudit(ctx, clusterID, "DELETE", "jwt", jwtID, map[string]any{"consumer_id": consumerID})
+	}
+	return err
 }
 
 func (u *kongUsecase) ListBasicAuths(ctx context.Context, clusterID int32, consumerID string) ([]domain.KongBasicAuth, error) {
@@ -202,7 +283,11 @@ func (u *kongUsecase) CreateBasicAuth(ctx context.Context, clusterID int32, cons
 	if err != nil {
 		return nil, err
 	}
-	return u.kongClient.CreateBasicAuth(ctx, url, token, consumerID, basicAuth)
+	res, err := u.kongClient.CreateBasicAuth(ctx, url, token, consumerID, basicAuth)
+	if err == nil && res != nil {
+		u.logAudit(ctx, clusterID, "CREATE", "basic_auth", res.ID, map[string]any{"consumer_id": consumerID, "username": res.Username})
+	}
+	return res, err
 }
 
 func (u *kongUsecase) DeleteBasicAuth(ctx context.Context, clusterID int32, consumerID, authID string) error {
@@ -210,7 +295,11 @@ func (u *kongUsecase) DeleteBasicAuth(ctx context.Context, clusterID int32, cons
 	if err != nil {
 		return err
 	}
-	return u.kongClient.DeleteBasicAuth(ctx, url, token, consumerID, authID)
+	err = u.kongClient.DeleteBasicAuth(ctx, url, token, consumerID, authID)
+	if err == nil {
+		u.logAudit(ctx, clusterID, "DELETE", "basic_auth", authID, map[string]any{"consumer_id": consumerID})
+	}
+	return err
 }
 
 func (u *kongUsecase) ListACLs(ctx context.Context, clusterID int32, consumerID string) ([]domain.KongACL, error) {
@@ -226,7 +315,11 @@ func (u *kongUsecase) CreateACL(ctx context.Context, clusterID int32, consumerID
 	if err != nil {
 		return nil, err
 	}
-	return u.kongClient.CreateACL(ctx, url, token, consumerID, acl)
+	res, err := u.kongClient.CreateACL(ctx, url, token, consumerID, acl)
+	if err == nil && res != nil {
+		u.logAudit(ctx, clusterID, "CREATE", "acl", res.ID, map[string]any{"consumer_id": consumerID, "group": res.Group})
+	}
+	return res, err
 }
 
 func (u *kongUsecase) DeleteACL(ctx context.Context, clusterID int32, consumerID, aclID string) error {
@@ -234,7 +327,11 @@ func (u *kongUsecase) DeleteACL(ctx context.Context, clusterID int32, consumerID
 	if err != nil {
 		return err
 	}
-	return u.kongClient.DeleteACL(ctx, url, token, consumerID, aclID)
+	err = u.kongClient.DeleteACL(ctx, url, token, consumerID, aclID)
+	if err == nil {
+		u.logAudit(ctx, clusterID, "DELETE", "acl", aclID, map[string]any{"consumer_id": consumerID})
+	}
+	return err
 }
 
 // -------------------------------------------------------------
@@ -254,7 +351,11 @@ func (u *kongUsecase) CreatePlugin(ctx context.Context, clusterID int32, plugin 
 	if err != nil {
 		return nil, err
 	}
-	return u.kongClient.CreatePlugin(ctx, url, token, plugin)
+	res, err := u.kongClient.CreatePlugin(ctx, url, token, plugin)
+	if err == nil && res != nil {
+		u.logAudit(ctx, clusterID, "CREATE", "plugin", res.ID, map[string]any{"name": res.Name, "enabled": res.Enabled})
+	}
+	return res, err
 }
 
 func (u *kongUsecase) UpdatePlugin(ctx context.Context, clusterID int32, plugin *domain.KongPlugin) (*domain.KongPlugin, error) {
@@ -262,7 +363,11 @@ func (u *kongUsecase) UpdatePlugin(ctx context.Context, clusterID int32, plugin 
 	if err != nil {
 		return nil, err
 	}
-	return u.kongClient.UpdatePlugin(ctx, url, token, plugin)
+	res, err := u.kongClient.UpdatePlugin(ctx, url, token, plugin)
+	if err == nil && res != nil {
+		u.logAudit(ctx, clusterID, "UPDATE", "plugin", plugin.ID, map[string]any{"name": plugin.Name, "enabled": plugin.Enabled})
+	}
+	return res, err
 }
 
 func (u *kongUsecase) DeletePlugin(ctx context.Context, clusterID int32, pluginID string) error {
@@ -270,7 +375,11 @@ func (u *kongUsecase) DeletePlugin(ctx context.Context, clusterID int32, pluginI
 	if err != nil {
 		return err
 	}
-	return u.kongClient.DeletePlugin(ctx, url, token, pluginID)
+	err = u.kongClient.DeletePlugin(ctx, url, token, pluginID)
+	if err == nil {
+		u.logAudit(ctx, clusterID, "DELETE", "plugin", pluginID, nil)
+	}
+	return err
 }
 
 // -------------------------------------------------------------
@@ -290,7 +399,11 @@ func (u *kongUsecase) CreateUpstream(ctx context.Context, clusterID int32, upstr
 	if err != nil {
 		return nil, err
 	}
-	return u.kongClient.CreateUpstream(ctx, url, token, upstream)
+	res, err := u.kongClient.CreateUpstream(ctx, url, token, upstream)
+	if err == nil && res != nil {
+		u.logAudit(ctx, clusterID, "CREATE", "upstream", res.ID, map[string]any{"name": res.Name, "algorithm": res.Algorithm})
+	}
+	return res, err
 }
 
 func (u *kongUsecase) UpdateUpstream(ctx context.Context, clusterID int32, upstream *domain.KongUpstream) (*domain.KongUpstream, error) {
@@ -298,7 +411,11 @@ func (u *kongUsecase) UpdateUpstream(ctx context.Context, clusterID int32, upstr
 	if err != nil {
 		return nil, err
 	}
-	return u.kongClient.UpdateUpstream(ctx, url, token, upstream)
+	res, err := u.kongClient.UpdateUpstream(ctx, url, token, upstream)
+	if err == nil && res != nil {
+		u.logAudit(ctx, clusterID, "UPDATE", "upstream", upstream.ID, map[string]any{"name": upstream.Name})
+	}
+	return res, err
 }
 
 func (u *kongUsecase) DeleteUpstream(ctx context.Context, clusterID int32, upstreamID string) error {
@@ -306,7 +423,11 @@ func (u *kongUsecase) DeleteUpstream(ctx context.Context, clusterID int32, upstr
 	if err != nil {
 		return err
 	}
-	return u.kongClient.DeleteUpstream(ctx, url, token, upstreamID)
+	err = u.kongClient.DeleteUpstream(ctx, url, token, upstreamID)
+	if err == nil {
+		u.logAudit(ctx, clusterID, "DELETE", "upstream", upstreamID, nil)
+	}
+	return err
 }
 
 func (u *kongUsecase) GetUpstreamHealth(ctx context.Context, clusterID int32, upstreamID string) (*domain.KongUpstreamHealth, error) {
@@ -350,7 +471,11 @@ func (u *kongUsecase) SetTargetHealthy(ctx context.Context, clusterID int32, ups
 	if err != nil {
 		return err
 	}
-	return u.kongClient.SetTargetHealthy(ctx, url, token, upstreamID, targetID)
+	err = u.kongClient.SetTargetHealthy(ctx, url, token, upstreamID, targetID)
+	if err == nil {
+		u.logAudit(ctx, clusterID, "UPDATE", "target", targetID, map[string]any{"upstream_id": upstreamID, "health": "healthy"})
+	}
+	return err
 }
 
 func (u *kongUsecase) SetTargetUnhealthy(ctx context.Context, clusterID int32, upstreamID, targetID string) error {
@@ -358,7 +483,11 @@ func (u *kongUsecase) SetTargetUnhealthy(ctx context.Context, clusterID int32, u
 	if err != nil {
 		return err
 	}
-	return u.kongClient.SetTargetUnhealthy(ctx, url, token, upstreamID, targetID)
+	err = u.kongClient.SetTargetUnhealthy(ctx, url, token, upstreamID, targetID)
+	if err == nil {
+		u.logAudit(ctx, clusterID, "UPDATE", "target", targetID, map[string]any{"upstream_id": upstreamID, "health": "unhealthy"})
+	}
+	return err
 }
 
 // -------------------------------------------------------------
@@ -571,6 +700,36 @@ func (u *kongUsecase) DumpDeclarativeConfig(ctx context.Context, clusterID int32
 	return cfg, nil
 }
 
+func (u *kongUsecase) DiffDeclarativeConfig(ctx context.Context, clusterID int32, config *domain.KongDeclarativeConfig) (*domain.KongDiffSummary, error) {
+	if config == nil {
+		return &domain.KongDiffSummary{}, nil
+	}
+
+	summary := &domain.KongDiffSummary{
+		ServicesToCreate:     len(config.Services),
+		RoutesToCreate:       len(config.Routes),
+		UpstreamsToCreate:    len(config.Upstreams),
+		ConsumersToCreate:    len(config.Consumers),
+		PluginsToCreate:      len(config.Plugins),
+		CertificatesToCreate: len(config.Certificates),
+	}
+
+	for _, s := range config.Services {
+		summary.RoutesToCreate += len(s.Routes)
+		summary.PluginsToCreate += len(s.Plugins)
+	}
+
+	for _, u := range config.Upstreams {
+		summary.TargetsToCreate += len(u.Targets)
+	}
+
+	for _, c := range config.Consumers {
+		summary.CredentialsToCreate += len(c.KeyAuthCredentials) + len(c.JWTCredentials) + len(c.BasicAuthCredentials)
+	}
+
+	return summary, nil
+}
+
 func (u *kongUsecase) SyncDeclarativeConfig(ctx context.Context, clusterID int32, config *domain.KongDeclarativeConfig) (*domain.KongDiffSummary, error) {
 	url, token, err := u.getClusterParams(ctx, clusterID)
 	if err != nil {
@@ -729,7 +888,11 @@ func (u *kongUsecase) RestoreSnapshot(ctx context.Context, clusterID int32, snap
 		return nil, errors.New("snapshot contains empty configuration")
 	}
 
-	return u.SyncDeclarativeConfig(ctx, clusterID, snap.ConfigJSON)
+	diff, err := u.SyncDeclarativeConfig(ctx, clusterID, snap.ConfigJSON)
+	if err == nil {
+		u.logAudit(ctx, clusterID, "RESTORE_SNAPSHOT", "snapshot", fmt.Sprintf("%d", snapshotID), map[string]any{"name": snap.Name})
+	}
+	return diff, err
 }
 
 func (u *kongUsecase) DeleteSnapshot(ctx context.Context, snapshotID int64) error {
@@ -738,3 +901,334 @@ func (u *kongUsecase) DeleteSnapshot(ctx context.Context, snapshotID int64) erro
 	}
 	return u.snapshotRepo.Delete(ctx, snapshotID)
 }
+
+func (u *kongUsecase) TestRequest(ctx context.Context, clusterID int32, req *domain.TestRequestInput) (*domain.TestRequestResult, error) {
+	cluster, err := u.clusterRepo.GetByID(ctx, clusterID)
+	if err != nil {
+		return nil, errors.New("cluster not found")
+	}
+
+	targetURL := req.URL
+	if !strings.HasPrefix(targetURL, "http://") && !strings.HasPrefix(targetURL, "https://") {
+		// Relative path: derive proxy URL from cluster Admin URL
+		// Kong default: Admin API port 8001 -> Proxy port 8000; Admin 8444 -> Proxy 8443
+		proxyBase := cluster.URL
+		if strings.Contains(proxyBase, ":8001") {
+			proxyBase = strings.Replace(proxyBase, ":8001", ":8000", 1)
+		} else if strings.Contains(proxyBase, ":8444") {
+			proxyBase = strings.Replace(proxyBase, ":8444", ":8443", 1)
+		}
+		if !strings.HasPrefix(targetURL, "/") {
+			targetURL = "/" + targetURL
+		}
+		targetURL = strings.TrimRight(proxyBase, "/") + targetURL
+	}
+
+	method := strings.ToUpper(req.Method)
+	if method == "" {
+		method = "GET"
+	}
+
+	timeoutSec := req.Timeout
+	if timeoutSec <= 0 || timeoutSec > 60 {
+		timeoutSec = 15
+	}
+
+	var reqBody io.Reader
+	if req.Body != "" {
+		reqBody = strings.NewReader(req.Body)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, method, targetURL, reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build HTTP request: %w", err)
+	}
+
+	for k, v := range req.Headers {
+		httpReq.Header.Set(k, v)
+	}
+
+	client := &http.Client{
+		Timeout: time.Duration(timeoutSec) * time.Second,
+	}
+
+	start := time.Now()
+	resp, err := client.Do(httpReq)
+	duration := time.Since(start)
+
+	if err != nil {
+		return &domain.TestRequestResult{
+			StatusCode: 0,
+			StatusText: "Connection Error: " + err.Error(),
+			LatencyMS:  math.Round(duration.Seconds()*100000) / 100,
+			Headers:    make(map[string][]string),
+			Body:       err.Error(),
+			SizeBytes:  0,
+		}, nil
+	}
+	defer resp.Body.Close()
+
+	// Read body capped at 1MB
+	bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
+
+	resHeaders := make(map[string][]string)
+	for k, v := range resp.Header {
+		resHeaders[k] = v
+	}
+
+	return &domain.TestRequestResult{
+		StatusCode: resp.StatusCode,
+		StatusText: resp.Status,
+		LatencyMS:  math.Round(duration.Seconds()*100000) / 100,
+		Headers:    resHeaders,
+		Body:       string(bodyBytes),
+		SizeBytes:  int64(len(bodyBytes)),
+	}, nil
+}
+
+func (u *kongUsecase) RunDiagnostics(ctx context.Context, clusterID int32, input *domain.DiagnosticsInput) (*domain.DiagnosticsResult, error) {
+	if input == nil || strings.TrimSpace(input.Host) == "" {
+		return nil, errors.New("host is required for diagnostics")
+	}
+
+	host := strings.TrimSpace(input.Host)
+	port := input.Port
+	protocol := strings.ToLower(strings.TrimSpace(input.Protocol))
+	if protocol == "" {
+		if port == 443 {
+			protocol = "https"
+		} else if port == 80 {
+			protocol = "http"
+		} else {
+			protocol = "tcp"
+		}
+	}
+	if port <= 0 {
+		if protocol == "https" || protocol == "tls" {
+			port = 443
+		} else {
+			port = 80
+		}
+	}
+
+	timeoutSec := input.Timeout
+	if timeoutSec <= 0 || timeoutSec > 30 {
+		timeoutSec = 5
+	}
+	stepTimeout := time.Duration(timeoutSec) * time.Second
+
+	result := &domain.DiagnosticsResult{
+		Target:  fmt.Sprintf("%s:%d (%s)", host, port, protocol),
+		Success: true,
+		Steps:   make([]domain.DiagnosticsStep, 0, 4),
+	}
+	totalStart := time.Now()
+
+	// 1. DNS Resolution
+	dnsStart := time.Now()
+	resolver := net.Resolver{PreferGo: true}
+	resolveCtx, resolveCancel := context.WithTimeout(ctx, stepTimeout)
+	ips, err := resolver.LookupIPAddr(resolveCtx, host)
+	resolveCancel()
+	dnsLatency := math.Round(time.Since(dnsStart).Seconds()*100000) / 100
+
+	if err != nil {
+		result.Success = false
+		result.Error = "DNS resolution failed"
+		result.Steps = append(result.Steps, domain.DiagnosticsStep{
+			Step:      "DNS",
+			Status:    "FAILED",
+			Message:   fmt.Sprintf("Failed to resolve host %s: %v", host, err),
+			LatencyMS: dnsLatency,
+		})
+		result.Steps = append(result.Steps,
+			domain.DiagnosticsStep{Step: "TCP_CONNECT", Status: "SKIPPED", Message: "DNS failed"},
+			domain.DiagnosticsStep{Step: "TLS_HANDSHAKE", Status: "SKIPPED", Message: "DNS failed"},
+			domain.DiagnosticsStep{Step: "HTTP_PROBE", Status: "SKIPPED", Message: "DNS failed"},
+		)
+		result.TotalMS = math.Round(time.Since(totalStart).Seconds()*100000) / 100
+		return result, nil
+	}
+
+	ipStrings := make([]string, len(ips))
+	for i, ip := range ips {
+		ipStrings[i] = ip.String()
+	}
+	result.Steps = append(result.Steps, domain.DiagnosticsStep{
+		Step:      "DNS",
+		Status:    "SUCCESS",
+		Message:   fmt.Sprintf("Resolved %d IP(s): %s", len(ips), strings.Join(ipStrings, ", ")),
+		LatencyMS: dnsLatency,
+	})
+
+	// 2. TCP Connect
+	tcpTarget := net.JoinHostPort(host, fmt.Sprintf("%d", port))
+	tcpStart := time.Now()
+	dialer := &net.Dialer{Timeout: stepTimeout}
+	conn, err := dialer.DialContext(ctx, "tcp", tcpTarget)
+	tcpLatency := math.Round(time.Since(tcpStart).Seconds()*100000) / 100
+
+	if err != nil {
+		result.Success = false
+		result.Error = "TCP connection failed"
+		result.Steps = append(result.Steps, domain.DiagnosticsStep{
+			Step:      "TCP_CONNECT",
+			Status:    "FAILED",
+			Message:   fmt.Sprintf("Connection refused or timed out to %s: %v", tcpTarget, err),
+			LatencyMS: tcpLatency,
+		})
+		result.Steps = append(result.Steps,
+			domain.DiagnosticsStep{Step: "TLS_HANDSHAKE", Status: "SKIPPED", Message: "TCP connection failed"},
+			domain.DiagnosticsStep{Step: "HTTP_PROBE", Status: "SKIPPED", Message: "TCP connection failed"},
+		)
+		result.TotalMS = math.Round(time.Since(totalStart).Seconds()*100000) / 100
+		return result, nil
+	}
+	_ = conn.Close()
+	result.Steps = append(result.Steps, domain.DiagnosticsStep{
+		Step:      "TCP_CONNECT",
+		Status:    "SUCCESS",
+		Message:   fmt.Sprintf("Successfully established TCP handshake with %s", tcpTarget),
+		LatencyMS: tcpLatency,
+	})
+
+	// 3. TLS Handshake (if TLS or HTTPS)
+	isTLS := protocol == "https" || protocol == "tls" || port == 443
+	if !isTLS {
+		result.Steps = append(result.Steps, domain.DiagnosticsStep{
+			Step:      "TLS_HANDSHAKE",
+			Status:    "SKIPPED",
+			Message:   "Target protocol does not require TLS",
+			LatencyMS: 0,
+		})
+	} else {
+		tlsStart := time.Now()
+		tlsDialer := &tls.Dialer{
+			NetDialer: &net.Dialer{Timeout: stepTimeout},
+			Config: &tls.Config{
+				InsecureSkipVerify: true,
+				ServerName:         host,
+			},
+		}
+		tlsConn, err := tlsDialer.DialContext(ctx, "tcp", tcpTarget)
+		tlsLatency := math.Round(time.Since(tlsStart).Seconds()*100000) / 100
+
+		if err != nil {
+			result.Success = false
+			result.Error = "TLS handshake failed"
+			result.Steps = append(result.Steps, domain.DiagnosticsStep{
+				Step:      "TLS_HANDSHAKE",
+				Status:    "FAILED",
+				Message:   fmt.Sprintf("TLS Handshake error with %s: %v", tcpTarget, err),
+				LatencyMS: tlsLatency,
+			})
+			result.Steps = append(result.Steps, domain.DiagnosticsStep{
+				Step: "HTTP_PROBE", Status: "SKIPPED", Message: "TLS handshake failed",
+			})
+			result.TotalMS = math.Round(time.Since(totalStart).Seconds()*100000) / 100
+			return result, nil
+		}
+		tlsState := tlsConn.(*tls.Conn).ConnectionState()
+		_ = tlsConn.Close()
+
+		result.Steps = append(result.Steps, domain.DiagnosticsStep{
+			Step:      "TLS_HANDSHAKE",
+			Status:    "SUCCESS",
+			Message:   fmt.Sprintf("TLS Handshake succeeded (TLS 0x%04x, Cipher 0x%04x)", tlsState.Version, tlsState.CipherSuite),
+			LatencyMS: tlsLatency,
+		})
+	}
+
+	// 4. HTTP Probe (if HTTP or HTTPS)
+	isHTTP := protocol == "http" || protocol == "https" || port == 80 || port == 443 || port == 8000 || port == 8080
+	if !isHTTP {
+		result.Steps = append(result.Steps, domain.DiagnosticsStep{
+			Step:      "HTTP_PROBE",
+			Status:    "SKIPPED",
+			Message:   "Raw TCP/TLS target, skipped HTTP probe",
+			LatencyMS: 0,
+		})
+	} else {
+		httpStart := time.Now()
+		scheme := "http"
+		if isTLS {
+			scheme = "https"
+		}
+		path := input.Path
+		if path == "" {
+			path = "/"
+		} else if !strings.HasPrefix(path, "/") {
+			path = "/" + path
+		}
+		httpURL := fmt.Sprintf("%s://%s:%d%s", scheme, host, port, path)
+
+		httpReq, _ := http.NewRequestWithContext(ctx, http.MethodGet, httpURL, nil)
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		client := &http.Client{Transport: tr, Timeout: stepTimeout}
+		resp, err := client.Do(httpReq)
+		httpLatency := math.Round(time.Since(httpStart).Seconds()*100000) / 100
+
+		if err != nil {
+			result.Success = false
+			result.Error = "HTTP probe failed: " + err.Error()
+			result.Steps = append(result.Steps, domain.DiagnosticsStep{
+				Step:      "HTTP_PROBE",
+				Status:    "FAILED",
+				Message:   fmt.Sprintf("HTTP GET %s failed: %v", httpURL, err),
+				LatencyMS: httpLatency,
+			})
+		} else {
+			_ = resp.Body.Close()
+			result.Steps = append(result.Steps, domain.DiagnosticsStep{
+				Step:      "HTTP_PROBE",
+				Status:    "SUCCESS",
+				Message:   fmt.Sprintf("HTTP %s -> Status: %s (Code %d)", httpURL, resp.Status, resp.StatusCode),
+				LatencyMS: httpLatency,
+			})
+		}
+	}
+
+	result.TotalMS = math.Round(time.Since(totalStart).Seconds()*100000) / 100
+	return result, nil
+}
+
+func (u *kongUsecase) PromoteConfig(ctx context.Context, sourceClusterID, targetClusterID int32) (*domain.KongDiffSummary, error) {
+	if sourceClusterID == targetClusterID {
+		return nil, errors.New("source and target cluster must be different")
+	}
+
+	sourceCluster, err := u.clusterRepo.GetByID(ctx, sourceClusterID)
+	if err != nil {
+		return nil, fmt.Errorf("source cluster not found: %w", err)
+	}
+	targetCluster, err := u.clusterRepo.GetByID(ctx, targetClusterID)
+	if err != nil {
+		return nil, fmt.Errorf("target cluster not found: %w", err)
+	}
+
+	// 1. Dump source configuration
+	sourceConfig, err := u.DumpDeclarativeConfig(ctx, sourceClusterID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dump configuration from source cluster (%s): %w", sourceCluster.Name, err)
+	}
+
+	// 2. Sync to target cluster
+	diffSummary, err := u.SyncDeclarativeConfig(ctx, targetClusterID, sourceConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sync configuration to target cluster (%s): %w", targetCluster.Name, err)
+	}
+
+	// 3. Log audit
+	u.logAudit(ctx, targetClusterID, "PROMOTE", "CLUSTER", fmt.Sprintf("%d->%d", sourceClusterID, targetClusterID), map[string]any{
+		"source_cluster_id":   sourceClusterID,
+		"source_cluster_name": sourceCluster.Name,
+		"target_cluster_id":   targetClusterID,
+		"target_cluster_name": targetCluster.Name,
+		"diff_summary":        diffSummary,
+	})
+
+	return diffSummary, nil
+}
+

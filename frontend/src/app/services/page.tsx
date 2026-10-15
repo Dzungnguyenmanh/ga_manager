@@ -53,6 +53,8 @@ export default function ServicesPage() {
   const [port, setPort] = React.useState('80');
   const [path, setPath] = React.useState('/');
   const [tags, setTags] = React.useState('');
+  const [owner, setOwner] = React.useState('');
+  const [criticality, setCriticality] = React.useState<'low' | 'medium' | 'high' | 'critical'>('medium');
 
   // Form State: Advanced
   const [retries, setRetries] = React.useState('5');
@@ -137,6 +139,8 @@ export default function ServicesPage() {
     setPort('80');
     setPath('/');
     setTags('');
+    setOwner('');
+    setCriticality('medium');
     setRetries('5');
     setConnectTimeout('60000');
     setReadTimeout('60000');
@@ -168,7 +172,28 @@ export default function ServicesPage() {
     setHost(svc.host || '');
     setPort(svc.port ? svc.port.toString() : '80');
     setPath(svc.path || '/');
-    setTags(svc.tags ? svc.tags.join(', ') : '');
+
+    // Parse metadata from tags
+    let cleanTags: string[] = [];
+    let extractedOwner = '';
+    let extractedCrit: 'low' | 'medium' | 'high' | 'critical' = 'medium';
+
+    (svc.tags || []).forEach((t) => {
+      if (t.startsWith('owner:')) {
+        extractedOwner = t.slice(6);
+      } else if (t.startsWith('criticality:')) {
+        const val = t.slice(12) as any;
+        if (['low', 'medium', 'high', 'critical'].includes(val)) {
+          extractedCrit = val;
+        }
+      } else {
+        cleanTags.push(t);
+      }
+    });
+
+    setOwner(extractedOwner);
+    setCriticality(extractedCrit);
+    setTags(cleanTags.join(', '));
     
     // Advanced fields
     setRetries(svc.retries !== undefined ? svc.retries.toString() : '5');
@@ -193,8 +218,21 @@ export default function ServicesPage() {
       return;
     }
 
+    if (activeCluster?.environment === 'PROD' && !owner.trim()) {
+      alert('⚠️ QUY TẮC PRODUCTION: Bắt buộc khai báo API Owner (Đội ngũ phụ trách) cho Service trên môi trường PROD!');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
+      let finalTags = tags ? tags.split(',').map((t) => t.trim()).filter((t) => Boolean(t) && !t.startsWith('owner:') && !t.startsWith('criticality:')) : [];
+      if (owner.trim()) {
+        finalTags.push(`owner:${owner.trim()}`);
+      }
+      if (criticality) {
+        finalTags.push(`criticality:${criticality}`);
+      }
+
       const payload: Partial<KongService> = {
         name: name.trim(),
         protocol,
@@ -210,7 +248,7 @@ export default function ServicesPage() {
         ca_certificates: caCertificates ? caCertificates.split(',').map((c) => c.trim()).filter(Boolean) : undefined,
         client_certificate: clientCertificateId.trim() ? { id: clientCertificateId.trim() } : undefined,
         enabled,
-        tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
+        tags: finalTags.length > 0 ? finalTags : undefined,
       };
 
       const res = await api.post('/api/kong/services', payload);
@@ -229,8 +267,21 @@ export default function ServicesPage() {
     e.preventDefault();
     if (!selectedService) return;
 
+    if (activeCluster?.environment === 'PROD' && !owner.trim()) {
+      alert('⚠️ QUY TẮC PRODUCTION: Bắt buộc khai báo API Owner (Đội ngũ phụ trách) cho Service trên môi trường PROD!');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
+      let finalTags = tags ? tags.split(',').map((t) => t.trim()).filter((t) => Boolean(t) && !t.startsWith('owner:') && !t.startsWith('criticality:')) : [];
+      if (owner.trim()) {
+        finalTags.push(`owner:${owner.trim()}`);
+      }
+      if (criticality) {
+        finalTags.push(`criticality:${criticality}`);
+      }
+
       const payload: Partial<KongService> = {
         id: selectedService.id,
         name: name.trim(),
@@ -247,7 +298,7 @@ export default function ServicesPage() {
         ca_certificates: caCertificates ? caCertificates.split(',').map((c) => c.trim()).filter(Boolean) : [],
         client_certificate: clientCertificateId.trim() ? { id: clientCertificateId.trim() } : undefined,
         enabled,
-        tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
+        tags: finalTags,
       };
 
       const res = await api.patch(`/api/kong/services/${selectedService.id}`, payload);
@@ -261,15 +312,40 @@ export default function ServicesPage() {
     }
   };
 
-  // Delete service in Kong
-  const handleDelete = async (id: string) => {
-    if (confirm('Bạn có chắc muốn xóa Service này khỏi Kong Gateway?')) {
-      try {
-        await api.delete(`/api/kong/services/${id}`);
-        setServices((prev) => prev.filter((s) => s.id !== id));
-      } catch (err: any) {
-        alert(`Lỗi khi xóa Service trên Kong: ${err.response?.data?.error || err.message}`);
+  // Delete service in Kong with Impact Analysis & PROD confirmation
+  const handleDelete = async (id: string, serviceName?: string) => {
+    try {
+      // 1. Dependency Impact Analysis: check if routes depend on this service
+      const routesRes = await api.get('/api/kong/routes').catch(() => ({ data: [] }));
+      const dependentRoutes = (routesRes.data || []).filter((r: any) => r.service?.id === id);
+
+      if (dependentRoutes.length > 0) {
+        const routeNames = dependentRoutes.map((r: any) => r.name || r.paths?.[0] || r.id).join(', ');
+        const confirmMsg = `⚠️ CẢNH BÁO TÁC ĐỘNG (Dependency Impact Analysis):\nService "${serviceName || id}" đang có ${dependentRoutes.length} Route phụ thuộc:\n[${routeNames}]\n\nXóa Service này sẽ khiến các Route trên bị gián đoạn hoạt động! Bạn có chắc chắn muốn tiếp tục không?`;
+        if (!confirm(confirmMsg)) {
+          return;
+        }
       }
+
+      // 2. PROD Environment safety check
+      if (activeCluster?.environment === 'PROD') {
+        const confirmed = prompt(
+          `⚠️ CẢNH BÁO: Môi trường PRODUCTION (${activeCluster.name})!\nVui lòng nhập tên Service "${serviceName || id}" để xác nhận xóa:`
+        );
+        if (confirmed !== (serviceName || id)) {
+          alert('Tên Service không khớp. Đã hủy thao tác xóa an toàn.');
+          return;
+        }
+      } else if (dependentRoutes.length === 0) {
+        if (!confirm(`Bạn có chắc muốn xóa Service "${serviceName || id}" khỏi Kong Gateway?`)) {
+          return;
+        }
+      }
+
+      await api.delete(`/api/kong/services/${id}`);
+      setServices((prev) => prev.filter((s) => s.id !== id));
+    } catch (err: any) {
+      alert(`Lỗi khi xóa Service trên Kong: ${err.response?.data?.error || err.message}`);
     }
   };
 
@@ -404,19 +480,46 @@ export default function ServicesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredServices.map((svc) => (
-                    <TableRow key={svc.id} className="hover:bg-blue-50/30 transition-colors">
-                      <TableCell className="font-medium text-gray-900">
-                        <div className="flex items-center gap-2.5">
-                          <div className="p-1.5 rounded-lg bg-blue-100 text-blue-700">
-                            <Layers className="h-4 w-4 shrink-0" />
+                  {filteredServices.map((svc) => {
+                    const svcOwner = svc.tags?.find((t) => t.startsWith('owner:'))?.replace('owner:', '');
+                    const svcCrit = svc.tags?.find((t) => t.startsWith('criticality:'))?.replace('criticality:', '');
+                    return (
+                      <TableRow key={svc.id} className="hover:bg-blue-50/30 transition-colors">
+                        <TableCell className="font-medium text-gray-900">
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-1.5 rounded-lg bg-blue-100 text-blue-700">
+                              <Layers className="h-4 w-4 shrink-0" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-gray-900">{svc.name}</span>
+                                {svcCrit && (
+                                  <span
+                                    className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                                      svcCrit === 'critical'
+                                        ? 'bg-red-100 text-red-700 border border-red-200'
+                                        : svcCrit === 'high'
+                                        ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                                        : svcCrit === 'medium'
+                                        ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                                        : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                    }`}
+                                  >
+                                    {svcCrit}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="font-mono text-[10px] text-gray-400">ID: {svc.id.slice(0, 8)}...</span>
+                                {svcOwner && (
+                                  <span className="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded font-medium">
+                                    👤 {svcOwner}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <span className="font-semibold text-gray-900 block">{svc.name}</span>
-                            <span className="font-mono text-[10px] text-gray-400">ID: {svc.id.slice(0, 8)}...</span>
-                          </div>
-                        </div>
-                      </TableCell>
+                        </TableCell>
                       <TableCell>
                         <Badge variant={svc.protocol === 'https' ? 'success' : 'secondary'} className="text-[11px] font-mono">
                           {svc.protocol?.toUpperCase() || 'HTTP'}
@@ -453,7 +556,7 @@ export default function ServicesPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(svc.id)}
+                            onClick={() => handleDelete(svc.id, svc.name)}
                             className="h-7 w-7 text-gray-400 hover:text-red-600 hover:bg-red-50"
                             title="Xóa Service"
                           >
@@ -462,7 +565,8 @@ export default function ServicesPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
@@ -579,6 +683,30 @@ export default function ServicesPage() {
                 value={path}
                 onChange={(e) => setPath(e.target.value)}
               />
+
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label={`API Owner / Đội ngũ phụ trách${activeCluster?.environment === 'PROD' ? ' *' : ''}`}
+                  placeholder="team-checkout / john.doe"
+                  value={owner}
+                  onChange={(e) => setOwner(e.target.value)}
+                  helperText={activeCluster?.environment === 'PROD' ? 'Bắt buộc trên môi trường PROD' : 'Tùy chọn'}
+                  required={activeCluster?.environment === 'PROD'}
+                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mức độ quan trọng (Criticality)</label>
+                  <select
+                    value={criticality}
+                    onChange={(e) => setCriticality(e.target.value as any)}
+                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  >
+                    <option value="critical">Critical (Tối quan trọng)</option>
+                    <option value="high">High (Cao)</option>
+                    <option value="medium">Medium (Trung bình)</option>
+                    <option value="low">Low (Thấp)</option>
+                  </select>
+                </div>
+              </div>
 
               <Input
                 label="Tags (cách nhau bằng dấu phẩy)"
@@ -796,6 +924,30 @@ export default function ServicesPage() {
                 value={path}
                 onChange={(e) => setPath(e.target.value)}
               />
+
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label={`API Owner / Đội ngũ phụ trách${activeCluster?.environment === 'PROD' ? ' *' : ''}`}
+                  placeholder="team-checkout / john.doe"
+                  value={owner}
+                  onChange={(e) => setOwner(e.target.value)}
+                  helperText={activeCluster?.environment === 'PROD' ? 'Bắt buộc trên môi trường PROD' : 'Tùy chọn'}
+                  required={activeCluster?.environment === 'PROD'}
+                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Criticality (Mức độ quan trọng)</label>
+                  <select
+                    value={criticality}
+                    onChange={(e) => setCriticality(e.target.value as any)}
+                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  >
+                    <option value="critical">Critical (Tối quan trọng)</option>
+                    <option value="high">High (Cao)</option>
+                    <option value="medium">Medium (Trung bình)</option>
+                    <option value="low">Low (Thấp)</option>
+                  </select>
+                </div>
+              </div>
 
               <Input
                 label="Tags (cách nhau bằng dấu phẩy)"

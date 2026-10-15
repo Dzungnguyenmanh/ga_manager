@@ -54,10 +54,10 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-lg border-gray-200">
         <CardHeader className="text-center pb-4">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white font-bold text-2xl shadow-md mb-2">
-            K
+            G
           </div>
-          <CardTitle className="text-2xl font-bold text-gray-900">Kong Manager</CardTitle>
-          <CardDescription>Đăng nhập vào hệ thống quản trị Kong Gateway</CardDescription>
+          <CardTitle className="text-2xl font-bold text-gray-900">Gateway Manager</CardTitle>
+          <CardDescription>Đăng nhập vào hệ thống quản trị API Gateway</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">

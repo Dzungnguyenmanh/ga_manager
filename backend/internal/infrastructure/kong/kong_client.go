@@ -3,7 +3,9 @@ package kong
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -581,6 +583,33 @@ func (c *kongClient) SetTargetUnhealthy(ctx context.Context, clusterURL, token, 
 // Certificates & SNIs & CA Certificates
 // -------------------------------------------------------------
 
+func enrichCertificate(cert *domain.KongCertificate) {
+	if cert == nil || cert.Cert == "" {
+		return
+	}
+	block, _ := pem.Decode([]byte(cert.Cert))
+	if block == nil {
+		return
+	}
+	parsed, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return
+	}
+	cert.ExpiryDate = parsed.NotAfter.Format(time.RFC3339)
+	cert.DaysUntilExpiry = int(time.Until(parsed.NotAfter).Hours() / 24)
+	cert.IsExpired = time.Now().After(parsed.NotAfter)
+	if parsed.Issuer.CommonName != "" {
+		cert.Issuer = parsed.Issuer.CommonName
+	} else if len(parsed.Issuer.Organization) > 0 {
+		cert.Issuer = parsed.Issuer.Organization[0]
+	}
+	if parsed.Subject.CommonName != "" {
+		cert.Subject = parsed.Subject.CommonName
+	} else if len(parsed.DNSNames) > 0 {
+		cert.Subject = parsed.DNSNames[0]
+	}
+}
+
 func (c *kongClient) ListCertificates(ctx context.Context, clusterURL, token string) ([]domain.KongCertificate, error) {
 	url := fmt.Sprintf("%s/certificates", clusterURL)
 	data, err := c.doRequest(ctx, "GET", url, token, nil)
@@ -593,6 +622,9 @@ func (c *kongClient) ListCertificates(ctx context.Context, clusterURL, token str
 	}
 	if err := json.Unmarshal(data, &result); err != nil {
 		return nil, err
+	}
+	for i := range result.Data {
+		enrichCertificate(&result.Data[i])
 	}
 	return result.Data, nil
 }
@@ -609,6 +641,7 @@ func (c *kongClient) CreateCertificate(ctx context.Context, clusterURL, token st
 	if err := json.Unmarshal(data, &created); err != nil {
 		return nil, err
 	}
+	enrichCertificate(&created)
 	return &created, nil
 }
 
@@ -624,6 +657,7 @@ func (c *kongClient) UpdateCertificate(ctx context.Context, clusterURL, token st
 	if err := json.Unmarshal(data, &updated); err != nil {
 		return nil, err
 	}
+	enrichCertificate(&updated)
 	return &updated, nil
 }
 
@@ -736,5 +770,23 @@ func (c *kongClient) GetNodeInfo(ctx context.Context, clusterURL, token string) 
 	if err := json.Unmarshal(data, &info); err != nil {
 		return nil, err
 	}
+
+	// Determine deployment topology
+	if info.Configuration != nil {
+		role, _ := info.Configuration["role"].(string)
+		db, _ := info.Configuration["database"].(string)
+		if role == "control_plane" {
+			info.Topology = "hybrid_cp"
+		} else if role == "data_plane" {
+			info.Topology = "hybrid_dp"
+		} else if db == "off" {
+			info.Topology = "db_less"
+		} else {
+			info.Topology = "traditional"
+		}
+	} else {
+		info.Topology = "traditional"
+	}
+
 	return &info, nil
 }

@@ -32,9 +32,11 @@ import {
   Lock,
 } from 'lucide-react';
 import Link from 'next/link';
+import { DiagnosticsModal } from '@/components/diagnostics/DiagnosticsModal';
 
 export default function DashboardPage() {
   const { activeCluster, activeClusterId } = useClusterStore();
+  const [diagnosticsOpen, setDiagnosticsOpen] = React.useState(false);
   const [counts, setCounts] = React.useState({
     routes: 0,
     services: 0,
@@ -217,51 +219,103 @@ export default function DashboardPage() {
       <div className="space-y-7">
         {/* Top Banner: Glassmorphism & High Contrast */}
         {activeCluster ? (
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-800 to-slate-950 p-6 text-white shadow-lg">
-            <div className="absolute -right-12 -bottom-12 w-64 h-64 rounded-full bg-blue-500/20 blur-3xl pointer-events-none"></div>
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Kong Gateway Cluster Active
-                  </span>
-                  <span className="text-xs px-2.5 py-0.5 rounded-md bg-white/10 font-mono text-blue-200">
-                    Cluster ID: #{activeCluster.id}
-                  </span>
-                  {nodeInfo?.version && (
-                    <span className="text-xs px-2.5 py-0.5 rounded-md bg-purple-500/20 font-mono text-purple-200 border border-purple-400/30">
-                      Kong v{nodeInfo.version}
+          <>
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-800 to-slate-950 p-6 text-white shadow-lg">
+              <div className="absolute -right-12 -bottom-12 w-64 h-64 rounded-full bg-blue-500/20 blur-3xl pointer-events-none"></div>
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      Kong Gateway Cluster Active
                     </span>
-                  )}
+                    <span className={`text-xs px-2.5 py-0.5 rounded-md font-bold uppercase ${
+                      activeCluster.environment === 'PROD'
+                        ? 'bg-rose-500/30 text-rose-200 border border-rose-400/30'
+                        : activeCluster.environment === 'STG'
+                        ? 'bg-amber-500/30 text-amber-200 border border-amber-400/30'
+                        : 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/30'
+                    }`}>
+                      {activeCluster.environment || 'DEV'}
+                    </span>
+                    <span className="text-xs px-2.5 py-0.5 rounded-md bg-white/10 font-mono text-blue-200">
+                      Cluster ID: #{activeCluster.id}
+                    </span>
+                    {nodeInfo?.topology && (
+                      <span className="text-xs px-2.5 py-0.5 rounded-md bg-indigo-500/30 font-semibold text-indigo-200 border border-indigo-400/30">
+                        {nodeInfo.topology === 'db_less'
+                          ? 'DB-less Mode'
+                          : nodeInfo.topology === 'hybrid_cp'
+                          ? 'Hybrid CP'
+                          : nodeInfo.topology === 'hybrid_dp'
+                          ? 'Hybrid DP'
+                          : 'Traditional (DB)'}
+                      </span>
+                    )}
+                    {nodeInfo?.version && (
+                      <span className="text-xs px-2.5 py-0.5 rounded-md bg-purple-500/20 font-mono text-purple-200 border border-purple-400/30">
+                        Kong v{nodeInfo.version}
+                      </span>
+                    )}
+                  </div>
+                  <h1 className="text-2xl font-black tracking-tight">{activeCluster.name}</h1>
+                  <p className="text-xs text-blue-100 font-mono flex items-center gap-2 flex-wrap">
+                    <span>Admin API: <span className="text-blue-200 underline">{activeCluster.url}</span></span>
+                    <span>•</span>
+                    <span>Proxy Port: <span className="text-emerald-300 font-bold">:8000</span> (HTTP) / <span className="text-emerald-300 font-bold">:8443</span> (HTTPS)</span>
+                  </p>
                 </div>
-                <h1 className="text-2xl font-black tracking-tight">{activeCluster.name}</h1>
-                <p className="text-xs text-blue-100 font-mono flex items-center gap-2 flex-wrap">
-                  <span>Admin API: <span className="text-blue-200 underline">{activeCluster.url}</span></span>
-                  <span>•</span>
-                  <span>Proxy Port: <span className="text-emerald-300 font-bold">:8000</span> (HTTP) / <span className="text-emerald-300 font-bold">:8443</span> (HTTPS)</span>
-                </p>
-              </div>
 
-              <div className="flex items-center gap-2.5">
-                <Button
-                  onClick={fetchDashboardData}
-                  variant="outline"
-                  className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs font-semibold h-9"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
-                  Làm mới
-                </Button>
-                <Link
-                  href="/routes"
-                  className="px-4 py-2 bg-white text-blue-900 hover:bg-blue-50 rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Cấu hình Route mới
-                </Link>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <Button
+                    onClick={() => setDiagnosticsOpen(true)}
+                    variant="outline"
+                    className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs font-semibold h-9"
+                  >
+                    <Activity className="h-3.5 w-3.5 mr-1.5 text-blue-300" />
+                    Chẩn đoán mạng
+                  </Button>
+                  <Button
+                    onClick={fetchDashboardData}
+                    variant="outline"
+                    className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs font-semibold h-9"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
+                    Làm mới
+                  </Button>
+                  <Link
+                    href="/routes"
+                    className="px-4 py-2 bg-white text-blue-900 hover:bg-blue-50 rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Cấu hình Route mới
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
+
+            {/* DB-less Topology Notice Banner */}
+            {nodeInfo?.topology === 'db_less' && (
+              <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl flex items-center justify-between text-xs text-indigo-900 dark:text-indigo-200 shadow-xs">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/60 rounded-lg text-indigo-700 dark:text-indigo-300">
+                    <Server className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold">Cụm Kong đang chạy ở chế độ DB-less (Declarative Only)</h4>
+                    <p className="text-indigo-800/80 dark:text-indigo-300/80 mt-0.5">
+                      Thao tác CRUD trực tiếp qua Admin API bị vô hiệu hóa. Mọi thay đổi về Services, Routes và Plugins phải được đồng bộ qua file YAML hoặc GitOps.
+                    </p>
+                  </div>
+                </div>
+                <Link href="/declarative">
+                  <Button size="sm" variant="outline" className="text-xs bg-white text-indigo-700 border-indigo-300 h-8">
+                    Mở decK GitOps
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </>
         ) : (
           <div className="bg-gradient-to-r from-gray-900 to-slate-800 rounded-2xl p-8 text-white shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="space-y-2 text-center md:text-left">
@@ -472,6 +526,11 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      <DiagnosticsModal
+        isOpen={diagnosticsOpen}
+        onClose={() => setDiagnosticsOpen(false)}
+      />
     </AppLayout>
   );
 }

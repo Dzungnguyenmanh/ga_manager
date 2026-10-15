@@ -3,6 +3,7 @@ export interface KongCluster {
   name: string;
   url: string;
   admin_token?: string;
+  environment?: 'DEV' | 'STG' | 'PROD';
   created_at?: string;
   updated_at?: string;
 }
@@ -159,6 +160,11 @@ export interface KongCertificate {
   snis?: string[];
   tags?: string[];
   created_at?: number;
+  expiry_date?: string;
+  days_until_expiry?: number;
+  is_expired?: boolean;
+  issuer?: string;
+  subject?: string;
 }
 
 export interface KongSNI {
@@ -239,6 +245,8 @@ export interface KongNodeInfo {
   lua_version: string;
   tagline: string;
   plugins: Record<string, any>;
+  configuration?: Record<string, any>;
+  topology?: 'traditional' | 'db_less' | 'hybrid_cp' | 'hybrid_dp';
 }
 
 export interface KongDeclarativeConsumer {
@@ -325,3 +333,56 @@ export interface AuthResponse {
   token: string;
   user: User;
 }
+
+export interface AuditLog {
+  id: number;
+  cluster_id?: number;
+  user_id?: number;
+  username: string;
+  action: string;
+  resource: string;
+  resource_id?: string;
+  details?: Record<string, any>;
+  created_at: string;
+}
+
+export interface TestRequestInput {
+  method: string;
+  url: string;
+  headers?: Record<string, string>;
+  body?: string;
+  timeout?: number;
+}
+
+export interface TestRequestResult {
+  status_code: number;
+  status_text: string;
+  latency_ms: number;
+  headers: Record<string, string[]>;
+  body: string;
+  size_bytes: number;
+}
+
+export interface DiagnosticsStep {
+  step: 'DNS' | 'TCP_CONNECT' | 'TLS_HANDSHAKE' | 'HTTP_PROBE';
+  status: 'SUCCESS' | 'FAILED' | 'SKIPPED';
+  message: string;
+  latency_ms: number;
+}
+
+export interface DiagnosticsResult {
+  target: string;
+  success: boolean;
+  total_ms: number;
+  steps: DiagnosticsStep[];
+  error?: string;
+}
+
+export interface DiagnosticsInput {
+  host: string;
+  port: number;
+  protocol?: string;
+  path?: string;
+  timeout?: number;
+}
+

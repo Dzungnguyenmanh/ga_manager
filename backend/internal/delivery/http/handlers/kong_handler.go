@@ -4,6 +4,8 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"kong-manager-backend/internal/domain"
 
@@ -12,11 +14,12 @@ import (
 )
 
 type KongHandler struct {
-	Usecase domain.KongUsecase
+	Usecase   domain.KongUsecase
+	AuditRepo domain.AuditRepository
 }
 
-func NewKongHandler(u domain.KongUsecase) *KongHandler {
-	return &KongHandler{Usecase: u}
+func NewKongHandler(u domain.KongUsecase, auditRepo domain.AuditRepository) *KongHandler {
+	return &KongHandler{Usecase: u, AuditRepo: auditRepo}
 }
 
 func (h *KongHandler) getClusterID(c *gin.Context) int32 {
@@ -25,6 +28,42 @@ func (h *KongHandler) getClusterID(c *gin.Context) int32 {
 		return 0
 	}
 	return val.(int32)
+}
+
+func (h *KongHandler) recordAudit(c *gin.Context, clusterID int32, action, resource, resourceID string, details map[string]any) {
+	if h.AuditRepo == nil {
+		return
+	}
+	username := c.GetHeader("X-User-Name")
+	if username == "" {
+		username = "operator"
+	}
+	if details == nil {
+		details = make(map[string]any)
+	}
+	details["source_ip"] = c.ClientIP()
+
+	for k, v := range details {
+		kLower := strings.ToLower(k)
+		if strings.Contains(kLower, "key") || strings.Contains(kLower, "secret") || strings.Contains(kLower, "password") {
+			if strVal, ok := v.(string); ok && strVal != "" {
+				details[k] = "********"
+			}
+		}
+	}
+
+	cid := clusterID
+	auditLog := &domain.AuditLog{
+		ClusterID:  &cid,
+		Username:   username,
+		Action:     action,
+		Resource:   resource,
+		ResourceID: resourceID,
+		Details:    details,
+		CreatedAt:  time.Now(),
+	}
+
+	_ = h.AuditRepo.Create(c.Request.Context(), auditLog)
 }
 
 // -------------------------------------------------------------
@@ -54,6 +93,7 @@ func (h *KongHandler) CreateService(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "CREATE", "service", created.ID, map[string]any{"name": created.Name, "host": created.Host})
 	c.JSON(http.StatusCreated, created)
 }
 
@@ -71,6 +111,7 @@ func (h *KongHandler) UpdateService(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "UPDATE", "service", updated.ID, map[string]any{"name": updated.Name, "host": updated.Host})
 	c.JSON(http.StatusOK, updated)
 }
 
@@ -82,6 +123,7 @@ func (h *KongHandler) DeleteService(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "DELETE", "service", serviceID, nil)
 	c.Status(http.StatusNoContent)
 }
 
@@ -112,6 +154,7 @@ func (h *KongHandler) CreateRoute(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "CREATE", "route", created.ID, map[string]any{"name": created.Name, "paths": created.Paths})
 	c.JSON(http.StatusCreated, created)
 }
 
@@ -129,6 +172,7 @@ func (h *KongHandler) UpdateRoute(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "UPDATE", "route", updated.ID, map[string]any{"name": updated.Name, "paths": updated.Paths})
 	c.JSON(http.StatusOK, updated)
 }
 
@@ -140,6 +184,7 @@ func (h *KongHandler) DeleteRoute(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "DELETE", "route", routeID, nil)
 	c.Status(http.StatusNoContent)
 }
 
@@ -170,6 +215,7 @@ func (h *KongHandler) CreateConsumer(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "CREATE", "consumer", created.ID, map[string]any{"username": created.Username})
 	c.JSON(http.StatusCreated, created)
 }
 
@@ -187,6 +233,7 @@ func (h *KongHandler) UpdateConsumer(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "UPDATE", "consumer", updated.ID, map[string]any{"username": updated.Username})
 	c.JSON(http.StatusOK, updated)
 }
 
@@ -198,6 +245,7 @@ func (h *KongHandler) DeleteConsumer(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "DELETE", "consumer", consumerID, nil)
 	c.Status(http.StatusNoContent)
 }
 
@@ -230,6 +278,7 @@ func (h *KongHandler) CreateKeyAuth(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "CREATE", "key-auth", created.ID, map[string]any{"consumer_id": consumerID})
 	c.JSON(http.StatusCreated, created)
 }
 
@@ -241,6 +290,7 @@ func (h *KongHandler) DeleteKeyAuth(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "DELETE", "key-auth", keyID, map[string]any{"consumer_id": consumerID})
 	c.Status(http.StatusNoContent)
 }
 
@@ -388,6 +438,7 @@ func (h *KongHandler) CreatePlugin(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "CREATE", "plugin", created.ID, map[string]any{"name": created.Name})
 	c.JSON(http.StatusCreated, created)
 }
 
@@ -405,6 +456,7 @@ func (h *KongHandler) UpdatePlugin(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "UPDATE", "plugin", updated.ID, map[string]any{"name": updated.Name})
 	c.JSON(http.StatusOK, updated)
 }
 
@@ -416,6 +468,7 @@ func (h *KongHandler) DeletePlugin(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "DELETE", "plugin", pluginID, nil)
 	c.Status(http.StatusNoContent)
 }
 
@@ -446,6 +499,7 @@ func (h *KongHandler) CreateUpstream(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "CREATE", "upstream", created.ID, map[string]any{"name": created.Name})
 	c.JSON(http.StatusCreated, created)
 }
 
@@ -463,6 +517,7 @@ func (h *KongHandler) UpdateUpstream(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "UPDATE", "upstream", updated.ID, map[string]any{"name": updated.Name})
 	c.JSON(http.StatusOK, updated)
 }
 
@@ -474,6 +529,7 @@ func (h *KongHandler) DeleteUpstream(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "DELETE", "upstream", upstreamID, nil)
 	c.Status(http.StatusNoContent)
 }
 
@@ -586,6 +642,7 @@ func (h *KongHandler) CreateCertificate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "CREATE", "certificate", created.ID, map[string]any{"snis": created.SNIs})
 	c.JSON(http.StatusCreated, created)
 }
 
@@ -603,6 +660,7 @@ func (h *KongHandler) UpdateCertificate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "UPDATE", "certificate", updated.ID, map[string]any{"snis": updated.SNIs})
 	c.JSON(http.StatusOK, updated)
 }
 
@@ -614,6 +672,7 @@ func (h *KongHandler) DeleteCertificate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "DELETE", "certificate", certID, nil)
 	c.Status(http.StatusNoContent)
 }
 
@@ -727,6 +786,27 @@ func (h *KongHandler) DumpDeclarativeConfig(c *gin.Context) {
 		return
 	}
 
+	// Secret masking protection for production
+	maskSecrets := c.DefaultQuery("mask_secrets", "true") == "true"
+	if maskSecrets {
+		for i := range cfg.Consumers {
+			for j := range cfg.Consumers[i].KeyAuthCredentials {
+				cfg.Consumers[i].KeyAuthCredentials[j].Key = "********"
+			}
+			for j := range cfg.Consumers[i].JWTCredentials {
+				cfg.Consumers[i].JWTCredentials[j].Secret = "********"
+			}
+			for j := range cfg.Consumers[i].BasicAuthCredentials {
+				cfg.Consumers[i].BasicAuthCredentials[j].Password = "********"
+			}
+		}
+		for i := range cfg.Certificates {
+			if cfg.Certificates[i].Key != "" {
+				cfg.Certificates[i].Key = "[REDACTED_PRIVATE_KEY]"
+			}
+		}
+	}
+
 	format := c.DefaultQuery("format", "json")
 	if format == "yaml" || format == "yml" {
 		yamlData, err := yaml.Marshal(cfg)
@@ -769,6 +849,37 @@ func (h *KongHandler) SyncDeclarativeConfig(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "SYNC_GITOPS", "declarative", "", map[string]any{"status": "success"})
+	c.JSON(http.StatusOK, summary)
+}
+
+func (h *KongHandler) DiffDeclarativeConfig(c *gin.Context) {
+	clusterID := h.getClusterID(c)
+	var config domain.KongDeclarativeConfig
+
+	contentType := c.GetHeader("Content-Type")
+	if contentType == "application/x-yaml" || contentType == "text/yaml" {
+		bodyBytes, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if err := yaml.Unmarshal(bodyBytes, &config); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid YAML: " + err.Error()})
+			return
+		}
+	} else {
+		if err := c.ShouldBindJSON(&config); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON: " + err.Error()})
+			return
+		}
+	}
+
+	summary, err := h.Usecase.DiffDeclarativeConfig(c.Request.Context(), clusterID, &config)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, summary)
 }
 
@@ -788,6 +899,7 @@ func (h *KongHandler) CreateSnapshot(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "CREATE", "snapshot", strconv.FormatInt(snap.ID, 10), map[string]any{"name": snap.Name})
 	c.JSON(http.StatusCreated, snap)
 }
 
@@ -815,6 +927,7 @@ func (h *KongHandler) RestoreSnapshot(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "RESTORE_SNAPSHOT", "snapshot", snapshotIDStr, map[string]any{"status": "restored"})
 	c.JSON(http.StatusOK, summary)
 }
 
@@ -832,3 +945,84 @@ func (h *KongHandler) DeleteSnapshot(c *gin.Context) {
 	}
 	c.Status(http.StatusNoContent)
 }
+
+func (h *KongHandler) TestRequest(c *gin.Context) {
+	clusterID := h.getClusterID(c)
+	var req domain.TestRequestInput
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.Usecase.TestRequest(c.Request.Context(), clusterID, &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *KongHandler) ListAuditLogs(c *gin.Context) {
+	var clusterIDPtr *int32
+	if clusterIDStr := c.Query("cluster_id"); clusterIDStr != "" {
+		if id, err := strconv.Atoi(clusterIDStr); err == nil && id > 0 {
+			cid := int32(id)
+			clusterIDPtr = &cid
+		}
+	}
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	if h.AuditRepo == nil {
+		c.JSON(http.StatusOK, gin.H{"logs": []domain.AuditLog{}, "total": 0})
+		return
+	}
+
+	logs, total, err := h.AuditRepo.List(c.Request.Context(), clusterIDPtr, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"logs":  logs,
+		"total": total,
+	})
+}
+
+func (h *KongHandler) RunDiagnostics(c *gin.Context) {
+	clusterID := h.getClusterID(c)
+	var input domain.DiagnosticsInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.Usecase.RunDiagnostics(c.Request.Context(), clusterID, &input)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+type PromoteRequest struct {
+	SourceClusterID int32 `json:"source_cluster_id" binding:"required"`
+	TargetClusterID int32 `json:"target_cluster_id" binding:"required"`
+}
+
+func (h *KongHandler) PromoteConfig(c *gin.Context) {
+	var req PromoteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.Usecase.PromoteConfig(c.Request.Context(), req.SourceClusterID, req.TargetClusterID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	h.recordAudit(c, req.TargetClusterID, "PROMOTE_CONFIG", "cluster", strconv.Itoa(int(req.SourceClusterID)), map[string]any{"source_cluster_id": req.SourceClusterID, "target_cluster_id": req.TargetClusterID})
+	c.JSON(http.StatusOK, result)
+}
+

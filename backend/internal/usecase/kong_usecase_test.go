@@ -179,7 +179,7 @@ func TestKongUsecase_ListServices(t *testing.T) {
 			{ID: "s1", Name: "Service 1"},
 		},
 	}
-	u := NewKongUsecase(kongClient, repo, nil)
+	u := NewKongUsecase(kongClient, repo, nil, nil)
 
 	t.Run("success", func(t *testing.T) {
 		services, err := u.ListServices(context.Background(), 1)

@@ -20,6 +20,27 @@ spec:
           # ====================================================================
           # 1. Backend REST API Endpoints
           # ====================================================================
+          - path: /api/clusters
+            pathType: Prefix
+            backend:
+              service:
+                name: kong-manager-backend
+                port:
+                  number: 8080
+          - path: /api/kong
+            pathType: Prefix
+            backend:
+              service:
+                name: kong-manager-backend
+                port:
+                  number: 8080
+          - path: /api/audit-logs
+            pathType: Prefix
+            backend:
+              service:
+                name: kong-manager-backend
+                port:
+                  number: 8080
           - path: /api
             pathType: Prefix
             backend:

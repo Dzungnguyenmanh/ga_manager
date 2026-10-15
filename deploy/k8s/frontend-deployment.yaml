@@ -22,7 +22,7 @@ spec:
         - containerPort: 3000
         env:
         - name: NEXT_PUBLIC_API_URL
-          value: "http://kong-manager-backend:8080"
+          value: ""
         livenessProbe:
           httpGet:
             path: /

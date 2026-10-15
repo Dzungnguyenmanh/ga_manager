@@ -1,0 +1,70 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-manager-ingress
+  annotations:
+    kubernetes.io/ingress.class: "kong"
+    konghq.com/strip-path: "false"
+    konghq.com/regex-priority: "100"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: kong
+  tls:
+    - hosts:
+        - kong.hmisp.com.vn
+      secretName: kong-hmisp-tls
+  rules:
+    - host: kong.hmisp.com.vn
+      http:
+        paths:
+          # ====================================================================
+          # 1. Backend REST API Endpoints
+          # ====================================================================
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: kong-manager-backend
+                port:
+                  number: 8080
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: kong-manager-backend
+                port:
+                  number: 8080
+          - path: /ping
+            pathType: Prefix
+            backend:
+              service:
+                name: kong-manager-backend
+                port:
+                  number: 8080
+
+          # ====================================================================
+          # 2. Frontend Next.js Web UI (Default Root Route)
+          # ====================================================================
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kong-manager-frontend
+                port:
+                  number: 3000
+---
+# ==============================================================================
+# SSL / TLS Certificate (cert-manager & Let's Encrypt Production)
+# ==============================================================================
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kong-hmisp-cert
+spec:
+  secretName: kong-hmisp-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - kong.hmisp.com.vn
+  renewBefore: 720h # Auto renew before 30 days

@@ -8,7 +8,12 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
-    execArgv: ['--require', path.resolve(__dirname, './vitest-preload.cjs')],
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        execArgv: ['--require', path.resolve(__dirname, './vitest-preload.cjs')],
+      },
+    },
   },
   resolve: {
     alias: {

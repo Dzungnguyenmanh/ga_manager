@@ -73,19 +73,4 @@ spec:
                 name: kong-manager-frontend
                 port:
                   number: 3000
----
-# ==============================================================================
-# SSL / TLS Certificate (cert-manager & Let's Encrypt Production)
-# ==============================================================================
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: kong-hmisp-cert
-spec:
-  secretName: kong-hmisp-tls
-  issuerRef:
-    name: letsencrypt-prod
-    kind: ClusterIssuer
-  dnsNames:
-    - kong.hmisp.com.vn
-  renewBefore: 720h # Auto renew before 30 days
+

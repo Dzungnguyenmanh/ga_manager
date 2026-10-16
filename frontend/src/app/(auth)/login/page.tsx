@@ -179,6 +179,10 @@ function LoginForm() {
                 </>
               )}
             </Button>
+
+            <div className="text-center text-xs text-gray-500 bg-gray-50 py-2 px-3 rounded-md border border-gray-100">
+              Tài khoản quản trị mặc định: <code className="bg-gray-200 px-1 py-0.5 rounded text-gray-800 font-mono">admin</code> / <code className="bg-gray-200 px-1 py-0.5 rounded text-gray-800 font-mono">admin123</code>
+            </div>
           </form>
 
           {/* Phân cách */}

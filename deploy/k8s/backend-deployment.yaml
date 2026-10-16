@@ -72,6 +72,16 @@ spec:
           value: "redis://kong-manager-redis:6379/0"
         - name: KONG_TLS_SKIP_VERIFY
           value: "false"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: kong-manager-secrets
+              key: jwt-secret
+        - name: INITIAL_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kong-manager-secrets
+              key: initial-admin-password
         - name: PORT
           value: "8080"
         livenessProbe:

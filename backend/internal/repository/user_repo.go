@@ -82,6 +82,26 @@ func (r *userRepository) GetByID(ctx context.Context, id int64) (*domain.User, e
 	return &u, nil
 }
 
+func (r *userRepository) UpdatePassword(ctx context.Context, username, newPasswordHash string) error {
+	if r.pool == nil {
+		return errors.New("database pool is not initialized")
+	}
+
+	query := `
+		UPDATE users
+		SET password_hash = $1, role = 'admin', updated_at = CURRENT_TIMESTAMP
+		WHERE username = $2
+	`
+	tag, err := r.pool.Exec(ctx, query, newPasswordHash, username)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return errors.New("user not found")
+	}
+	return nil
+}
+
 // InMemoryUserRepository provides a thread-safe repository for unit testing and offline environments.
 type inMemoryUserRepository struct {
 	mu    sync.RWMutex
@@ -172,14 +192,21 @@ func (m *inMemoryUserRepository) GetByID(ctx context.Context, id int64) (*domain
 	return nil, errors.New("user not found")
 }
 
-// SeedDefaultAdminUser guarantees that at least one admin account exists in PostgreSQL.
+func (m *inMemoryUserRepository) UpdatePassword(ctx context.Context, username, newPasswordHash string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	u, exists := m.users[username]
+	if !exists {
+		return errors.New("user not found")
+	}
+	u.PasswordHash = newPasswordHash
+	return nil
+}
+
+// SeedDefaultAdminUser guarantees that at least one admin account exists in PostgreSQL with valid credentials.
 func SeedDefaultAdminUser(ctx context.Context, repo domain.UserRepository) error {
 	if repo == nil {
-		return nil
-	}
-	_, err := repo.GetByUsername(ctx, "admin")
-	if err == nil {
-		// Admin user already exists
 		return nil
 	}
 
@@ -194,6 +221,22 @@ func SeedDefaultAdminUser(ctx context.Context, repo domain.UserRepository) error
 	hash, err := bcrypt.GenerateFromPassword([]byte(defaultPass), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash admin password: %w", err)
+	}
+
+	existingUser, err := repo.GetByUsername(ctx, "admin")
+	if err == nil && existingUser != nil {
+		// Admin user already exists. If password hash doesn't match defaultPass,
+		// synchronize it so admin can always access the control plane.
+		if err := bcrypt.CompareHashAndPassword([]byte(existingUser.PasswordHash), []byte(defaultPass)); err != nil {
+			log.Println("[INFO] Existing admin password differs from INITIAL_ADMIN_PASSWORD or is outdated. Synchronizing password hash...")
+			if err := repo.UpdatePassword(ctx, "admin", string(hash)); err != nil {
+				return fmt.Errorf("failed to update admin password: %w", err)
+			}
+			log.Println("[INFO] Successfully synchronized default admin password (username: admin)")
+		} else {
+			log.Println("[INFO] Default admin user exists and password is verified.")
+		}
+		return nil
 	}
 
 	admin := &domain.User{

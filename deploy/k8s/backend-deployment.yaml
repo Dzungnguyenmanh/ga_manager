@@ -22,9 +22,9 @@ spec:
         - containerPort: 8080
         env:
         - name: DATABASE_URL
-          value: "postgres://kongmanager:kongmanager_password@kong-manager-postgres:5432/kongmanager?sslmode=disable"
+          value: "postgres://kongmanager:kongmanager_password@10.105.55.165:5432/kongmanager?sslmode=disable"
         - name: DB_HOST
-          value: "kong-manager-postgres"
+          value: "10.105.55.165"
         - name: DB_PORT
           value: "5432"
         - name: DB_USER
@@ -34,7 +34,7 @@ spec:
         - name: DB_NAME
           value: "kongmanager"
         - name: REDIS_URL
-          value: "redis://kong-manager-redis:6379/0"
+          value: "redis://10.96.179.194:6379/0"
         - name: PORT
           value: "8080"
         livenessProbe:

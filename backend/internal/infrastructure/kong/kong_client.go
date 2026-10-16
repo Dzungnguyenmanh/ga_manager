@@ -3,12 +3,14 @@ package kong
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"kong-manager-backend/internal/domain"
@@ -19,8 +21,25 @@ type kongClient struct {
 }
 
 func NewKongClient() domain.KongClient {
+	skipVerify := true
+	if val := os.Getenv("KONG_TLS_SKIP_VERIFY"); val == "false" || val == "0" {
+		skipVerify = false
+	}
+
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: skipVerify,
+		},
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 20,
+		IdleConnTimeout:     90 * time.Second,
+	}
+
 	return &kongClient{
-		client: &http.Client{Timeout: 10 * time.Second},
+		client: &http.Client{
+			Transport: transport,
+			Timeout:   15 * time.Second,
+		},
 	}
 }
 

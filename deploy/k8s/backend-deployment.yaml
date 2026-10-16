@@ -35,6 +35,8 @@ spec:
           value: "kongmanager"
         - name: REDIS_URL
           value: "redis://10.96.179.194:6379/0"
+        - name: KONG_TLS_SKIP_VERIFY
+          value: "true"
         - name: PORT
           value: "8080"
         livenessProbe:

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"strconv"
@@ -34,10 +35,30 @@ func (h *KongHandler) recordAudit(c *gin.Context, clusterID int32, action, resou
 	if h.AuditRepo == nil {
 		return
 	}
-	username := c.GetHeader("X-User-Name")
-	if username == "" {
-		username = "operator"
+
+	// Prefer authenticated username from verified context (VULN-06)
+	username := "operator"
+	if u, exists := c.Get("username"); exists {
+		if uStr, ok := u.(string); ok && uStr != "" {
+			username = uStr
+		}
+	} else if headerUser := c.GetHeader("X-User-Name"); headerUser != "" {
+		username = headerUser
 	}
+
+	var uid *int32
+	if uIDVal, exists := c.Get("user_id"); exists {
+		if idInt64, ok := uIDVal.(int64); ok {
+			idInt32 := int32(idInt64)
+			uid = &idInt32
+		} else if idInt, ok := uIDVal.(int); ok {
+			idInt32 := int32(idInt)
+			uid = &idInt32
+		} else if idInt32, ok := uIDVal.(int32); ok {
+			uid = &idInt32
+		}
+	}
+
 	if details == nil {
 		details = make(map[string]any)
 	}
@@ -55,6 +76,7 @@ func (h *KongHandler) recordAudit(c *gin.Context, clusterID int32, action, resou
 	cid := clusterID
 	auditLog := &domain.AuditLog{
 		ClusterID:  &cid,
+		UserID:     uid,
 		Username:   username,
 		Action:     action,
 		Resource:   resource,
@@ -786,9 +808,15 @@ func (h *KongHandler) DumpDeclarativeConfig(c *gin.Context) {
 		return
 	}
 
-	// Secret masking protection for production
+	// Secret masking protection for production (VULN-05)
 	maskSecrets := c.DefaultQuery("mask_secrets", "true") == "true"
-	if maskSecrets {
+	if !maskSecrets {
+		roleVal, exists := c.Get("role")
+		if !exists || !strings.EqualFold(roleVal.(string), "admin") {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden: Only administrators can export unmasked secrets"})
+			return
+		}
+	} else {
 		for i := range cfg.Consumers {
 			for j := range cfg.Consumers[i].KeyAuthCredentials {
 				cfg.Consumers[i].KeyAuthCredentials[j].Key = "********"
@@ -932,6 +960,7 @@ func (h *KongHandler) RestoreSnapshot(c *gin.Context) {
 }
 
 func (h *KongHandler) DeleteSnapshot(c *gin.Context) {
+	clusterID := h.getClusterID(c)
 	snapshotIDStr := c.Param("snapshotId")
 	snapshotID, err := strconv.ParseInt(snapshotIDStr, 10, 64)
 	if err != nil {
@@ -939,10 +968,12 @@ func (h *KongHandler) DeleteSnapshot(c *gin.Context) {
 		return
 	}
 
-	if err := h.Usecase.DeleteSnapshot(c.Request.Context(), snapshotID); err != nil {
+	ctx := context.WithValue(c.Request.Context(), "clusterID", clusterID)
+	if err := h.Usecase.DeleteSnapshot(ctx, snapshotID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.recordAudit(c, clusterID, "DELETE", "snapshot", snapshotIDStr, map[string]any{"status": "deleted"})
 	c.Status(http.StatusNoContent)
 }
 

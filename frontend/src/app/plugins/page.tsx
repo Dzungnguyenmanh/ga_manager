@@ -231,6 +231,34 @@ const PLUGIN_TEMPLATES: Record<string, PluginTemplate> = {
       echo_downstream: true,
     },
   },
+  'mtls-auth': {
+    name: 'mtls-auth',
+    title: 'Mutual TLS (mTLS) Authentication',
+    category: 'Authentication',
+    description: 'Xác thực client inbound hai chiều (Mutual TLS) đối chiếu với các CA Certificates đã cấu hình.',
+    defaultConfig: {
+      ca_certificates: [],
+      cache_ttl: 60,
+      revocation_check_mode: 'IGNORE',
+      skip_consumer_lookup: false,
+      send_ca_dn: false,
+    },
+  },
+  canary: {
+    name: 'canary',
+    title: 'Canary Release & Traffic Splitting',
+    category: 'Traffic Control',
+    description: 'Phân tách lưu lượng truy cập Canary dựa trên tỷ lệ phần trăm, header hoặc cookie để thử nghiệm an toàn.',
+    defaultConfig: {
+      percentage: 10,
+      upstream_fallback: false,
+      hash: 'consumer',
+      hash_header: 'X-Canary',
+      hash_cookie: 'canary_token',
+      duration: 3600,
+      steps: 10,
+    },
+  },
 };
 
 export default function PluginsPage() {
@@ -513,11 +541,13 @@ export default function PluginsPage() {
               <optgroup label="Traffic Control (Kiểm soát lưu lượng)">
                 <option value="rate-limiting">rate-limiting - Giới hạn tần suất gọi API</option>
                 <option value="proxy-cache">proxy-cache - Bộ nhớ đệm phản hồi</option>
+                <option value="canary">canary - Phân tách lưu lượng Canary & Traffic Splitting</option>
               </optgroup>
               <optgroup label="Authentication & Security (Bảo mật & Xác thực)">
                 <option value="key-auth">key-auth - Xác thực API Key</option>
                 <option value="jwt">jwt - Xác thực JSON Web Token</option>
                 <option value="basic-auth">basic-auth - Xác thực HTTP Basic</option>
+                <option value="mtls-auth">mtls-auth - Xác thực mTLS hai chiều (Mutual TLS)</option>
                 <option value="cors">cors - Cấu hình Cross-Origin Sharing</option>
                 <option value="ip-restriction">ip-restriction - Giới hạn IP Whitelist/Blacklist</option>
                 <option value="bot-detection">bot-detection - Chống bot & web scrapers</option>

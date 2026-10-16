@@ -1,13 +1,35 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"encoding/json"
+)
 
 type KongCluster struct {
-	ID          int32  `json:"id"`
-	Name        string `json:"name"`
-	URL         string `json:"url"`
-	AdminToken  string `json:"admin_token,omitempty"`
-	Environment string `json:"environment,omitempty"` // DEV, STG, PROD
+	ID            int32  `json:"id"`
+	Name          string `json:"name"`
+	URL           string `json:"url"`
+	AdminToken    string `json:"-"`
+	HasAdminToken bool   `json:"has_admin_token"`
+	Environment   string `json:"environment,omitempty"` // DEV, STG, PROD
+}
+
+func (c *KongCluster) UnmarshalJSON(data []byte) error {
+	type Alias KongCluster
+	aux := &struct {
+		AdminToken string `json:"admin_token"`
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+	if aux.AdminToken != "" {
+		c.AdminToken = aux.AdminToken
+	}
+	c.HasAdminToken = c.AdminToken != ""
+	return nil
 }
 
 type ClusterUsecase interface {

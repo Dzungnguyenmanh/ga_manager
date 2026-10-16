@@ -2,6 +2,10 @@ package usecase
 
 import (
 	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"kong-manager-backend/internal/domain"
@@ -197,3 +201,148 @@ func TestKongUsecase_ListServices(t *testing.T) {
 		// In getClusterParams: if err != nil it fails. Let's modify mockRepo GetByID to return error for missing cluster.
 	})
 }
+
+type mockSnapshotRepo struct {
+	snapshots map[int64]*domain.Snapshot
+}
+
+func (m *mockSnapshotRepo) Create(ctx context.Context, s *domain.Snapshot) (*domain.Snapshot, error) {
+	return s, nil
+}
+func (m *mockSnapshotRepo) ListByClusterID(ctx context.Context, clusterID int32) ([]domain.Snapshot, error) {
+	return nil, nil
+}
+func (m *mockSnapshotRepo) GetByID(ctx context.Context, id int64) (*domain.Snapshot, error) {
+	if s, ok := m.snapshots[id]; ok {
+		return s, nil
+	}
+	return nil, errors.New("not found")
+}
+func (m *mockSnapshotRepo) Delete(ctx context.Context, id int64) error {
+	delete(m.snapshots, id)
+	return nil
+}
+
+func TestKongUsecase_SSRF_Protection(t *testing.T) {
+	repo := &mockClusterRepo{
+		clusters: map[int32]*domain.KongCluster{
+			1: {ID: 1, Name: "Cluster 1", URL: "http://kong-admin"},
+		},
+	}
+	u := NewKongUsecase(&mockKongClient{}, repo, nil, nil)
+
+	// TestRequest targeting cloud metadata
+	_, err := u.TestRequest(context.Background(), 1, &domain.TestRequestInput{
+		URL: "http://169.254.169.254/latest/meta-data/",
+	})
+	if err == nil {
+		t.Error("Expected SSRF protection error for 169.254.169.254, got nil")
+	}
+
+	// TestRequest targeting localhost
+	_, err = u.TestRequest(context.Background(), 1, &domain.TestRequestInput{
+		URL: "http://localhost:8001/status",
+	})
+	if err == nil {
+		t.Error("Expected SSRF protection error for localhost, got nil")
+	}
+
+	// RunDiagnostics targeting private IP
+	_, err = u.RunDiagnostics(context.Background(), 1, &domain.DiagnosticsInput{
+		Host: "10.105.55.165",
+		Port: 5432,
+	})
+	if err == nil {
+		t.Error("Expected diagnostics error for internal private IP, got nil")
+	}
+}
+
+func TestKongUsecase_Snapshot_IDOR_Protection(t *testing.T) {
+	repo := &mockClusterRepo{
+		clusters: map[int32]*domain.KongCluster{
+			1: {ID: 1, Name: "Cluster 1", URL: "http://kong-admin"},
+			2: {ID: 2, Name: "Cluster 2", URL: "http://kong-admin-2"},
+		},
+	}
+	snapRepo := &mockSnapshotRepo{
+		snapshots: map[int64]*domain.Snapshot{
+			100: {
+				ID:         100,
+				ClusterID:  2, // belongs to Cluster 2
+				Name:       "Cluster 2 Snapshot",
+				ConfigJSON: &domain.KongDeclarativeConfig{},
+			},
+		},
+	}
+	u := NewKongUsecase(&mockKongClient{}, repo, snapRepo, nil)
+
+	// Cluster 1 tries to restore Cluster 2's snapshot -> must be blocked
+	_, err := u.RestoreSnapshot(context.Background(), 1, 100)
+	if err == nil {
+		t.Error("Expected IDOR protection error when restoring snapshot of another cluster")
+	}
+}
+
+func TestKongUsecase_SSRF_Redirect_Protection(t *testing.T) {
+	// Cluster proxy mock that redirects to cloud metadata
+	clusterServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/redirect-to-metadata" {
+			http.Redirect(w, r, "http://169.254.169.254/latest/meta-data/", http.StatusFound)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	}))
+	defer clusterServer.Close()
+
+	repo := &mockClusterRepo{
+		clusters: map[int32]*domain.KongCluster{
+			1: {ID: 1, Name: "Cluster 1", URL: clusterServer.URL},
+		},
+	}
+	u := NewKongUsecase(&mockKongClient{}, repo, nil, nil)
+
+	// An endpoint that redirects to cloud metadata must be blocked by CheckRedirect
+	result, err := u.TestRequest(context.Background(), 1, &domain.TestRequestInput{
+		URL: "/redirect-to-metadata",
+	})
+	if err != nil {
+		t.Fatalf("TestRequest returned unexpected error: %v", err)
+	}
+	if result == nil || !strings.Contains(result.StatusText, "SSRF protection blocked redirect") {
+		t.Errorf("Expected SSRF protection blocked redirect error, got: %+v", result)
+	}
+}
+
+func TestKongUsecase_Relative_Cluster_URL(t *testing.T) {
+	// Legitimate Kong cluster proxy mock
+	clusterServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/status" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status":"ok"}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer clusterServer.Close()
+
+	repo := &mockClusterRepo{
+		clusters: map[int32]*domain.KongCluster{
+			1: {ID: 1, Name: "Cluster 1", URL: clusterServer.URL},
+		},
+	}
+	u := NewKongUsecase(&mockKongClient{}, repo, nil, nil)
+
+	// Relative path request should resolve against cluster URL and NOT be blocked as SSRF
+	result, err := u.TestRequest(context.Background(), 1, &domain.TestRequestInput{
+		URL: "/status",
+	})
+	if err != nil {
+		t.Fatalf("Expected relative cluster request to succeed, got error: %v", err)
+	}
+	if result.StatusCode != http.StatusOK {
+		t.Errorf("Expected 200 OK, got: %d (%s)", result.StatusCode, result.StatusText)
+	}
+}
+
+

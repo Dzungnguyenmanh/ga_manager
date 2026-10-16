@@ -5,7 +5,7 @@ metadata:
   labels:
     app: kong-manager-backend
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: kong-manager-backend
@@ -14,43 +14,80 @@ spec:
       labels:
         app: kong-manager-backend
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - kong-manager-backend
+              topologyKey: "kubernetes.io/hostname"
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
       containers:
       - name: backend
         image: images.hmisp.com.vn/h-iam/ga-manager-backend:latest
         imagePullPolicy: Always
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
         ports:
         - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
         env:
-        - name: DATABASE_URL
-          value: "postgres://kongmanager:kongmanager_password@10.105.55.165:5432/kongmanager?sslmode=disable"
         - name: DB_HOST
-          value: "10.105.55.165"
+          value: "kong-manager-postgres"
         - name: DB_PORT
           value: "5432"
         - name: DB_USER
           value: "kongmanager"
         - name: DB_PASSWORD
-          value: "kongmanager_password"
+          valueFrom:
+            secretKeyRef:
+              name: kong-manager-secrets
+              key: db-password
         - name: DB_NAME
           value: "kongmanager"
+        - name: DB_SSLMODE
+          value: "disable"
         - name: REDIS_URL
-          value: "redis://10.96.179.194:6379/0"
+          value: "redis://kong-manager-redis:6379/0"
         - name: KONG_TLS_SKIP_VERIFY
-          value: "true"
+          value: "false"
         - name: PORT
           value: "8080"
         livenessProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 5
+          initialDelaySeconds: 15
           periodSeconds: 10
+          timeoutSeconds: 3
         readinessProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 3
+          initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 3
       imagePullSecrets:
       - name: harbor-secret
 ---
@@ -58,9 +95,12 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kong-manager-backend
+  labels:
+    app: kong-manager-backend
 spec:
   selector:
     app: kong-manager-backend
   ports:
   - port: 8080
     targetPort: 8080
+    name: http

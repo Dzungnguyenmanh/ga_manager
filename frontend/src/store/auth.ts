@@ -36,6 +36,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
+      // Expire session cookies immediately across all relevant cookie names to prevent middleware redirect loops
+      const expiredFlags = 'path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0; SameSite=Lax;';
+      document.cookie = `token=; ${expiredFlags}`;
+      document.cookie = `session_token=; ${expiredFlags}`;
+      document.cookie = `session=; ${expiredFlags}`;
     }
     set({ user: null, token: null, isAuthenticated: false });
   },

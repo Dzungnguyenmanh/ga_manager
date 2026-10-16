@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"kong-manager-backend/internal/domain"
@@ -75,6 +76,12 @@ func (r *snapshotRepository) ListByClusterID(ctx context.Context, clusterID int3
 }
 
 func (r *snapshotRepository) GetByID(ctx context.Context, id int64) (*domain.Snapshot, error) {
+	if cidVal := ctx.Value("clusterID"); cidVal != nil {
+		if cid, ok := cidVal.(int32); ok && cid > 0 {
+			return r.GetByIDScoped(ctx, cid, id)
+		}
+	}
+
 	query := `
 		SELECT id, cluster_id, name, description, config_json, created_at
 		FROM snapshots
@@ -93,8 +100,45 @@ func (r *snapshotRepository) GetByID(ctx context.Context, id int64) (*domain.Sna
 	return &s, nil
 }
 
+func (r *snapshotRepository) GetByIDScoped(ctx context.Context, clusterID int32, id int64) (*domain.Snapshot, error) {
+	query := `
+		SELECT id, cluster_id, name, description, config_json, created_at
+		FROM snapshots
+		WHERE id = $1 AND cluster_id = $2
+	`
+	var s domain.Snapshot
+	var configBytes []byte
+	err := r.pool.QueryRow(ctx, query, id, clusterID).Scan(&s.ID, &s.ClusterID, &s.Name, &s.Description, &configBytes, &s.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	var cfg domain.KongDeclarativeConfig
+	if err := json.Unmarshal(configBytes, &cfg); err == nil {
+		s.ConfigJSON = &cfg
+	}
+	return &s, nil
+}
+
 func (r *snapshotRepository) Delete(ctx context.Context, id int64) error {
+	if cidVal := ctx.Value("clusterID"); cidVal != nil {
+		if cid, ok := cidVal.(int32); ok && cid > 0 {
+			return r.DeleteScoped(ctx, cid, id)
+		}
+	}
+
 	query := `DELETE FROM snapshots WHERE id = $1`
 	_, err := r.pool.Exec(ctx, query, id)
 	return err
+}
+
+func (r *snapshotRepository) DeleteScoped(ctx context.Context, clusterID int32, id int64) error {
+	query := `DELETE FROM snapshots WHERE id = $1 AND cluster_id = $2`
+	tag, err := r.pool.Exec(ctx, query, id, clusterID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return errors.New("snapshot not found or does not belong to cluster")
+	}
+	return nil
 }

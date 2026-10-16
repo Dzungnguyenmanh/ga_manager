@@ -28,6 +28,7 @@ func (h *ClusterHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	req.HasAdminToken = req.AdminToken != ""
 	c.JSON(http.StatusCreated, req)
 }
 
@@ -36,6 +37,9 @@ func (h *ClusterHandler) List(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+	for i := range clusters {
+		clusters[i].HasAdminToken = clusters[i].AdminToken != ""
 	}
 	c.JSON(http.StatusOK, clusters)
 }
@@ -49,6 +53,7 @@ func (h *ClusterHandler) GetByID(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
+	cluster.HasAdminToken = cluster.AdminToken != ""
 	c.JSON(http.StatusOK, cluster)
 }
 
@@ -63,10 +68,18 @@ func (h *ClusterHandler) Update(c *gin.Context) {
 	id, _ := strconv.ParseInt(idStr, 10, 32)
 	req.ID = int32(id)
 
+	// Preserve existing admin token if not specified in update request
+	if req.AdminToken == "" {
+		if existing, err := h.Usecase.GetByID(c.Request.Context(), req.ID); err == nil && existing != nil {
+			req.AdminToken = existing.AdminToken
+		}
+	}
+
 	if err := h.Usecase.Update(c.Request.Context(), &req); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	req.HasAdminToken = req.AdminToken != ""
 	c.JSON(http.StatusOK, req)
 }
 

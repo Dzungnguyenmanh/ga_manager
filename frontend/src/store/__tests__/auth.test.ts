@@ -8,6 +8,11 @@ describe('useAuthStore', () => {
       token: null,
       isAuthenticated: false,
     });
+    if (typeof window !== 'undefined') {
+      document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;';
+      document.cookie = 'session_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;';
+      document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;';
+    }
   });
 
   it('logs in local user correctly', () => {
@@ -32,7 +37,8 @@ describe('useAuthStore', () => {
     expect(useAuthStore.getState().token).toBe(token);
   });
 
-  it('logs out and clears authentication state', () => {
+  it('logs out, clears authentication state, and expires session cookies', () => {
+    document.cookie = 'token=active-session-token; path=/;';
     useAuthStore.getState().login({ id: 1, username: 'user', email: 'u@k.local' }, 'token123');
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
 
@@ -41,5 +47,7 @@ describe('useAuthStore', () => {
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(useAuthStore.getState().user).toBeNull();
     expect(useAuthStore.getState().token).toBeNull();
+    expect(document.cookie).not.toContain('token=active-session-token');
   });
 });
+

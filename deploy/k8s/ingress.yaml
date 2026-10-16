@@ -6,7 +6,6 @@ metadata:
     kubernetes.io/ingress.class: "kong"
     konghq.com/strip-path: "false"
     konghq.com/regex-priority: "100"
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
   ingressClassName: kong
   tls:

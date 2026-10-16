@@ -71,7 +71,7 @@ spec:
         - name: REDIS_URL
           value: "redis://kong-manager-redis:6379/0"
         - name: KONG_TLS_SKIP_VERIFY
-          value: "false"
+          value: "true"
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:

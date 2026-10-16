@@ -12,7 +12,10 @@ func ClusterIDMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		clusterIDStr := c.GetHeader("X-Kong-Cluster-Id")
 		if clusterIDStr == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "X-Kong-Cluster-Id header is required"})
+			clusterIDStr = c.Query("cluster_id")
+		}
+		if clusterIDStr == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "X-Kong-Cluster-Id header or cluster_id query param is required"})
 			c.Abort()
 			return
 		}

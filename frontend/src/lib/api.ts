@@ -29,7 +29,15 @@ api.interceptors.request.use((config) => {
     }
   }
   const activeClusterId = useClusterStore.getState().activeClusterId;
-  const token = useAuthStore.getState().token;
+  let token = useAuthStore.getState().token;
+
+  // Fallback: read token from cookie if Zustand state was lost or page was reloaded
+  if (!token && typeof window !== 'undefined') {
+    const match = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+    if (match && match[1]) {
+      token = decodeURIComponent(match[1]);
+    }
+  }
 
   if (activeClusterId) {
     config.headers['X-Kong-Cluster-Id'] = activeClusterId.toString();
@@ -46,8 +54,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
       useAuthStore.getState().logout();
+      if (!window.location.pathname.startsWith('/login')) {
+        const from = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/login?from=${from}`;
+      }
     }
     return Promise.reject(error);
   }

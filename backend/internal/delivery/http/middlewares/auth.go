@@ -149,7 +149,7 @@ func ValidateToken(tokenStr, secretKey string) (*JWTClaims, error) {
 	return &claims, nil
 }
 
-// AuthMiddleware inspects Authorization: Bearer <token> and populates user context.
+// AuthMiddleware inspects Authorization: Bearer <token>, Cookie, or query param and populates user context.
 func AuthMiddleware(secretKey string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
@@ -159,13 +159,35 @@ func AuthMiddleware(secretKey string) gin.HandlerFunc {
 			return
 		}
 
+		tokenStr := ""
+
+		// 1. Check Authorization header
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+			tokenStr = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+
+		// 2. Fallback to HTTP cookies (useful when browsing API directly in logged-in browser)
+		if tokenStr == "" {
+			if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
+				tokenStr = cookieToken
+			} else if sessionToken, err := c.Cookie("session_token"); err == nil && sessionToken != "" {
+				tokenStr = sessionToken
+			}
+		}
+
+		// 3. Fallback to query parameter (convenient for browser testing ?token=...)
+		if tokenStr == "" {
+			tokenStr = c.Query("token")
+		}
+
+		if tokenStr == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "Authorization token required. Please log in at /login or provide a Bearer token.",
+			})
 			return
 		}
 
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 		claims, err := ValidateToken(tokenStr, secretKey)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token: " + err.Error()})

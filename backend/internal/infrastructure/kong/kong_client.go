@@ -21,9 +21,9 @@ type kongClient struct {
 }
 
 func NewKongClient() domain.KongClient {
-	skipVerify := true
-	if val := os.Getenv("KONG_TLS_SKIP_VERIFY"); val == "false" || val == "0" {
-		skipVerify = false
+	skipVerify := false
+	if val := os.Getenv("KONG_TLS_SKIP_VERIFY"); val == "true" || val == "1" {
+		skipVerify = true
 	}
 
 	transport := &http.Transport{

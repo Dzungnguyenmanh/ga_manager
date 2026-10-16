@@ -9,10 +9,12 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"kong-manager-backend/internal/domain"
+	"kong-manager-backend/internal/pkg/security"
 )
 
 type kongUsecase struct {
@@ -884,6 +886,10 @@ func (u *kongUsecase) RestoreSnapshot(ctx context.Context, clusterID int32, snap
 		return nil, err
 	}
 
+	if snap.ClusterID != clusterID {
+		return nil, errors.New("snapshot not found or does not belong to cluster")
+	}
+
 	if snap.ConfigJSON == nil {
 		return nil, errors.New("snapshot contains empty configuration")
 	}
@@ -909,7 +915,10 @@ func (u *kongUsecase) TestRequest(ctx context.Context, clusterID int32, req *dom
 	}
 
 	targetURL := req.URL
-	if !strings.HasPrefix(targetURL, "http://") && !strings.HasPrefix(targetURL, "https://") {
+	isRelative := !strings.HasPrefix(targetURL, "http://") && !strings.HasPrefix(targetURL, "https://")
+
+	var clusterProxyURL *url.URL
+	if isRelative {
 		// Relative path: derive proxy URL from cluster Admin URL
 		// Kong default: Admin API port 8001 -> Proxy port 8000; Admin 8444 -> Proxy 8443
 		proxyBase := cluster.URL
@@ -918,10 +927,18 @@ func (u *kongUsecase) TestRequest(ctx context.Context, clusterID int32, req *dom
 		} else if strings.Contains(proxyBase, ":8444") {
 			proxyBase = strings.Replace(proxyBase, ":8444", ":8443", 1)
 		}
-		if !strings.HasPrefix(targetURL, "/") {
-			targetURL = "/" + targetURL
+		if parsed, err := url.Parse(proxyBase); err == nil {
+			clusterProxyURL = parsed
 		}
-		targetURL = strings.TrimRight(proxyBase, "/") + targetURL
+
+		// Sanitize relative path to prevent protocol-relative tricks (e.g. "//attacker.com")
+		cleanPath := strings.TrimLeft(targetURL, "/")
+		targetURL = strings.TrimRight(proxyBase, "/") + "/" + cleanPath
+	} else {
+		// SSRF Protection: Arbitrary external absolute URLs MUST be validated against loopback, RFC1918, cloud metadata
+		if err := security.ValidateSafeTargetURL(targetURL); err != nil {
+			return nil, fmt.Errorf("SSRF protection blocked request: %w", err)
+		}
 	}
 
 	method := strings.ToUpper(req.Method)
@@ -950,6 +967,20 @@ func (u *kongUsecase) TestRequest(ctx context.Context, clusterID int32, req *dom
 
 	client := &http.Client{
 		Timeout: time.Duration(timeoutSec) * time.Second,
+		CheckRedirect: func(redirectReq *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return errors.New("stopped after 10 redirects")
+			}
+			// If original request was relative to cluster proxy and redirect stays on the cluster host, allow it.
+			if isRelative && clusterProxyURL != nil && strings.EqualFold(redirectReq.URL.Host, clusterProxyURL.Host) {
+				return nil
+			}
+			// For external requests or redirects leaving the cluster proxy, strictly enforce SSRF validation
+			if err := security.ValidateSafeTargetURL(redirectReq.URL.String()); err != nil {
+				return fmt.Errorf("SSRF protection blocked redirect to %s: %w", redirectReq.URL.String(), err)
+			}
+			return nil
+		},
 	}
 
 	start := time.Now()
@@ -993,6 +1024,12 @@ func (u *kongUsecase) RunDiagnostics(ctx context.Context, clusterID int32, input
 
 	host := strings.TrimSpace(input.Host)
 	port := input.Port
+
+	// SSRF & internal probe protection: block loopback, RFC1918, cloud metadata, and internal IPs
+	if err := security.ValidateSafeHost(host); err != nil {
+		return nil, fmt.Errorf("diagnostics target blocked by security policy: %w", err)
+	}
+
 	protocol := strings.ToLower(strings.TrimSpace(input.Protocol))
 	if protocol == "" {
 		if port == 443 {

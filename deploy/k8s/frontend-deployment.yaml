@@ -5,7 +5,7 @@ metadata:
   labels:
     app: kong-manager-frontend
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: kong-manager-frontend
@@ -14,27 +14,61 @@ spec:
       labels:
         app: kong-manager-frontend
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - kong-manager-frontend
+              topologyKey: "kubernetes.io/hostname"
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
       containers:
       - name: frontend
         image: images.hmisp.com.vn/h-iam/ga-manager-frontend:latest
         imagePullPolicy: Always
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
         ports:
         - containerPort: 3000
+          name: http
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
         env:
         - name: NEXT_PUBLIC_API_URL
           value: ""
         livenessProbe:
           httpGet:
-            path: /
+            path: /login
             port: 3000
-          initialDelaySeconds: 10
+          initialDelaySeconds: 15
           periodSeconds: 15
+          timeoutSeconds: 3
         readinessProbe:
           httpGet:
-            path: /
+            path: /login
             port: 3000
           initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 3
       imagePullSecrets:
       - name: harbor-secret
 ---
@@ -42,9 +76,12 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kong-manager-frontend
+  labels:
+    app: kong-manager-frontend
 spec:
   selector:
     app: kong-manager-frontend
   ports:
   - port: 3000
     targetPort: 3000
+    name: http

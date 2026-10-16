@@ -7,9 +7,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"kong-manager-backend/internal/delivery/http/handlers"
+	"kong-manager-backend/internal/delivery/http/middlewares"
 	"kong-manager-backend/internal/delivery/http/router"
 	"kong-manager-backend/internal/infrastructure/kong"
 	"kong-manager-backend/internal/repository"
@@ -37,9 +40,12 @@ func initDatabaseSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		username VARCHAR(50) UNIQUE NOT NULL,
 		password_hash VARCHAR(255) NOT NULL,
 		email VARCHAR(255) UNIQUE NOT NULL,
+		role VARCHAR(50) DEFAULT 'admin',
 		created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 	);
+
+	ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'admin';
 
 	CREATE TABLE IF NOT EXISTS snapshots (
 		id SERIAL PRIMARY KEY,
@@ -143,27 +149,62 @@ func main() {
 	clusterRepo := repository.NewClusterRepository(pool)
 	snapshotRepo := repository.NewSnapshotRepository(pool)
 	auditRepo := repository.NewAuditRepository(pool)
+	userRepo := repository.NewUserRepository(pool)
 	kongClient := kong.NewKongClient()
 
+	// Seed default admin user in DB
+	seedCtx, seedCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := repository.SeedDefaultAdminUser(seedCtx, userRepo); err != nil {
+		log.Printf("Notice on user seeding: %v", err)
+	}
+	seedCancel()
+
 	// 3. Initialize Usecases
+	jwtSecret := middlewares.GetJWTSecret()
 	clusterUsecase := usecase.NewClusterUsecase(clusterRepo)
 	kongUsecase := usecase.NewKongUsecase(kongClient, clusterRepo, snapshotRepo, auditRepo)
+	authUsecase := usecase.NewAuthUsecase(userRepo, jwtSecret)
 
 	// 4. Initialize Handlers
 	clusterHandler := handlers.NewClusterHandler(clusterUsecase)
 	kongHandler := handlers.NewKongHandler(kongUsecase, auditRepo)
+	authHandler := handlers.NewAuthHandler(authUsecase)
 
 	// 5. Setup Router
-	r := router.SetupRouter(clusterHandler, kongHandler)
+	r := router.SetupRouter(clusterHandler, kongHandler, authHandler)
 
-	// 6. Start Server
+	// 6. Start Server with explicit timeouts (VULN-11) and Graceful Shutdown
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Printf("Server listening on port %s", port)
-	if err := http.ListenAndServe(":"+port, r); err != nil {
-		log.Fatalf("Server failed: %v", err)
+	srv := &http.Server{
+		Addr:           ":" + port,
+		Handler:        r,
+		ReadTimeout:    15 * time.Second,
+		WriteTimeout:   30 * time.Second,
+		IdleTimeout:    60 * time.Second,
+		MaxHeaderBytes: 1 << 20, // 1MB
 	}
+
+	go func() {
+		log.Printf("Server listening on port %s", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	// Graceful shutdown on SIGINT or SIGTERM
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down server gracefully...")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+	log.Println("Server exiting cleanly.")
 }

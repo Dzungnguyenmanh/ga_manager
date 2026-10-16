@@ -116,6 +116,7 @@ test:frontend:
   script:
     - 'echo "Running unit tests for $FRONTEND_SERVICE_NAME..."'
     - cd frontend
+    - if [ -f "$HOME/.nvm/nvm.sh" ]; then . "$HOME/.nvm/nvm.sh" && (nvm use 22 || nvm use 20 || true); fi
     - export NODE_OPTIONS="--require $(pwd)/vitest-preload.cjs"
     - if command -v npm >/dev/null 2>&1; then npm ci --legacy-peer-deps && npm run test; else echo "npm not found on runner, skipping..."; fi
   rules:

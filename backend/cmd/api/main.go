@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"time"
 
 	"kong-manager-backend/internal/delivery/http/handlers"
 	"kong-manager-backend/internal/delivery/http/router"
@@ -69,21 +72,72 @@ func main() {
 	// 1. Connect to PostgreSQL
 	dbUrl := os.Getenv("DATABASE_URL")
 	if dbUrl == "" {
-		dbUrl = "postgres://kongmanager:kongmanager_password@localhost:5432/kongmanager?sslmode=disable"
+		host := os.Getenv("DB_HOST")
+		if host == "" {
+			// Auto-detect Kubernetes environment
+			if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+				host = "kong-manager-postgres"
+			} else {
+				host = "localhost"
+			}
+		}
+		port := os.Getenv("DB_PORT")
+		if port == "" {
+			port = "5432"
+		}
+		user := os.Getenv("DB_USER")
+		if user == "" {
+			user = "kongmanager"
+		}
+		password := os.Getenv("DB_PASSWORD")
+		if password == "" {
+			password = "kongmanager_password"
+		}
+		dbname := os.Getenv("DB_NAME")
+		if dbname == "" {
+			dbname = "kongmanager"
+		}
+		sslmode := os.Getenv("DB_SSLMODE")
+		if sslmode == "" {
+			sslmode = "disable"
+		}
+		dbUrl = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", user, password, host, port, dbname, sslmode)
 	}
 
-	pool, err := pgxpool.New(context.Background(), dbUrl)
+	maskedUrl := dbUrl
+	if parsed, err := url.Parse(dbUrl); err == nil {
+		maskedUrl = parsed.Redacted()
+	}
+	log.Printf("Connecting to database: %s", maskedUrl)
+
+	poolConfig, err := pgxpool.ParseConfig(dbUrl)
+	if err != nil {
+		log.Fatalf("Invalid database connection string: %v\n", err)
+	}
+
+	pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
 	defer pool.Close()
 
+	// Verify database connection with timeout
+	pingCtx, pingCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := pool.Ping(pingCtx); err != nil {
+		log.Printf("Warning: Database ping failed: %v (backend will continue and retry on requests)", err)
+	} else {
+		log.Println("Database connection successfully established and verified.")
+	}
+	pingCancel()
+
 	// Ensure tables exist in database
-	if err := initDatabaseSchema(context.Background(), pool); err != nil {
+	schemaCtx, schemaCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	if err := initDatabaseSchema(schemaCtx, pool); err != nil {
 		log.Printf("Warning: Failed to init schema: %v\n", err)
 	} else {
 		log.Println("Database schema checked and verified successfully.")
 	}
+	schemaCancel()
 
 	// 2. Initialize Repositories and Infrastructure
 	clusterRepo := repository.NewClusterRepository(pool)

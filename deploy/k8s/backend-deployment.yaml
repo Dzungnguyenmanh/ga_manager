@@ -22,11 +22,17 @@ spec:
         - containerPort: 8080
         env:
         - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: kong-manager-secrets
-              key: database-url
-              optional: true
+          value: "postgres://kongmanager:kongmanager_password@kong-manager-postgres:5432/kongmanager?sslmode=disable"
+        - name: DB_HOST
+          value: "kong-manager-postgres"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: "kongmanager"
+        - name: DB_PASSWORD
+          value: "kongmanager_password"
+        - name: DB_NAME
+          value: "kongmanager"
         - name: REDIS_URL
           value: "redis://kong-manager-redis:6379/0"
         - name: PORT

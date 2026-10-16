@@ -1,12 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import * as workerThreads from 'node:worker_threads';
-
-// Polyfill markAsUncloneable for older Node versions (Node < 21.2) before jsdom / undici load
-if (typeof (workerThreads as { markAsUncloneable?: unknown }).markAsUncloneable !== 'function') {
-  (workerThreads as { markAsUncloneable?: unknown }).markAsUncloneable = (val: unknown) => val;
-}
 
 export default defineConfig({
   plugins: [react()],

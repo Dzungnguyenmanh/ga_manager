@@ -283,14 +283,11 @@ argocd:sync:
           argocd login "$ARGOCD_SERVER" --username "$ARGOCD_USERNAME" --password "$ARGOCD_PASSWORD" $ARGOCD_OPTS
         fi
 
-        echo "Updating image tag for $ARGOCD_APP_NAME to $CI_COMMIT_SHA..."
-        argocd app set "$ARGOCD_APP_NAME" --server "$ARGOCD_SERVER" $ARGOCD_OPTS --parameter image.tag="$CI_COMMIT_SHA" || echo "⚠️ Warning: 'argocd app set' not permitted by current ArgoCD RBAC, proceeding with direct sync..."
-
-        echo "Syncing application $ARGOCD_APP_NAME..."
-        argocd app sync "$ARGOCD_APP_NAME" --server "$ARGOCD_SERVER" $ARGOCD_OPTS --prune || echo "⚠️ Warning: 'argocd app sync' failed or requires additional RBAC permissions."
-
-        echo "Waiting for application to be Healthy..."
-        argocd app wait "$ARGOCD_APP_NAME" --server "$ARGOCD_SERVER" $ARGOCD_OPTS --health --timeout 180 || echo "⚠️ Warning: Health check wait timed out or requires additional permissions."
+        for APP in "kong-manager" "$ARGOCD_APP_NAME"; do
+          echo "Syncing application $APP..."
+          argocd app sync "$APP" --server "$ARGOCD_SERVER" $ARGOCD_OPTS --prune --force || echo "⚠️ Warning: 'argocd app sync' for $APP skipped or requires additional permissions."
+          argocd app actions run "$APP" restart --kind Deployment --all --server "$ARGOCD_SERVER" $ARGOCD_OPTS || true
+        done
       else
         echo "ℹ️ ARGOCD_SERVER or ARGOCD_AUTH_TOKEN not set. Skipping automated ArgoCD trigger."
       fi

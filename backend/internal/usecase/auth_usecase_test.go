@@ -55,3 +55,26 @@ func TestAuthUsecase_Login(t *testing.T) {
 		t.Errorf("Expected operator role, got: %s", opResp.User.Role)
 	}
 }
+
+func TestAuthUsecase_SSOConfig(t *testing.T) {
+	userRepo := repository.NewInMemoryUserRepository()
+	authU := usecase.NewAuthUsecase(userRepo, "test-secret-12345")
+
+	cfg := authU.GetSSOConfig()
+	if cfg == nil {
+		t.Fatal("Expected non-nil SSOConfig")
+	}
+	if cfg.TenantID != "TNSHMISP000000" {
+		t.Errorf("Expected TenantID 'TNSHMISP000000', got '%s'", cfg.TenantID)
+	}
+	if cfg.Realm != "hmisp" {
+		t.Errorf("Expected Realm 'hmisp', got '%s'", cfg.Realm)
+	}
+	if cfg.ClientID != "hiam-client-Id" {
+		t.Errorf("Expected ClientID 'hiam-client-Id', got '%s'", cfg.ClientID)
+	}
+	if cfg.SSOURL != "https://sso.hmisp.com.vn" {
+		t.Errorf("Expected SSOURL 'https://sso.hmisp.com.vn', got '%s'", cfg.SSOURL)
+	}
+}
+

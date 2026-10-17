@@ -84,6 +84,16 @@ spec:
               key: initial-admin-password
         - name: PORT
           value: "8080"
+        - name: SSO_URL
+          value: "https://sso.hmisp.com.vn"
+        - name: SSO_TENANT_ID
+          value: "TNSHMISP000000"
+        - name: SSO_REALM
+          value: "hmisp"
+        - name: SSO_CLIENT_ID
+          value: "hiam-client-Id"
+        - name: SSO_TLS_SKIP_VERIFY
+          value: "true"
         livenessProbe:
           httpGet:
             path: /health

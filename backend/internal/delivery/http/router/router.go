@@ -26,11 +26,14 @@ func SetupRouter(
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	// 3. Public Auth Routes (unauthenticated login endpoint)
+	// 3. Public Auth Routes (unauthenticated login & SSO endpoints)
 	if authHandler != nil {
 		authGroup := r.Group("/api/auth")
 		{
 			authGroup.POST("/login", authHandler.Login)
+			authGroup.GET("/sso/config", authHandler.GetSSOConfig)
+			authGroup.POST("/sso/callback", authHandler.SSOCallback)
+			authGroup.POST("/sso/login", authHandler.SSOLogin)
 		}
 	}
 

@@ -55,6 +55,14 @@ spec:
         env:
         - name: NEXT_PUBLIC_API_URL
           value: ""
+        - name: NEXT_PUBLIC_SSO_URL
+          value: "https://sso.hmisp.com.vn"
+        - name: NEXT_PUBLIC_SSO_TENANT_ID
+          value: "TNSHMISP000000"
+        - name: NEXT_PUBLIC_SSO_REALM
+          value: "hmisp"
+        - name: NEXT_PUBLIC_SSO_CLIENT_ID
+          value: "hiam-client-Id"
         livenessProbe:
           httpGet:
             path: /login

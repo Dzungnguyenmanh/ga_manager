@@ -41,3 +41,41 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		"user":  resp.User,
 	})
 }
+
+func (h *AuthHandler) GetSSOConfig(c *gin.Context) {
+	cfg := h.authUsecase.GetSSOConfig()
+	c.JSON(http.StatusOK, cfg)
+}
+
+func (h *AuthHandler) SSOCallback(c *gin.Context) {
+	var req domain.SSOCallbackRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid SSO callback request"})
+		return
+	}
+
+	resp, err := h.authUsecase.ExchangeSSOCode(c.Request.Context(), &req)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *AuthHandler) SSOLogin(c *gin.Context) {
+	var req domain.SSODirectLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid SSO login request"})
+		return
+	}
+
+	resp, err := h.authUsecase.LoginWithSSO(c.Request.Context(), &req)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+

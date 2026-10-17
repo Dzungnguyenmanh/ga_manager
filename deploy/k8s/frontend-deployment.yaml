@@ -13,6 +13,8 @@ spec:
     metadata:
       labels:
         app: kong-manager-frontend
+      annotations:
+        rollout/commit: "6858f4f14d84319f38dfd1f63be6d95fd1438155"
     spec:
       affinity:
         podAntiAffinity:
@@ -33,7 +35,7 @@ spec:
         fsGroup: 10001
       containers:
       - name: frontend
-        image: images.hmisp.com.vn/h-iam/ga-manager-frontend:latest
+        image: images.hmisp.com.vn/h-iam/ga-manager-frontend:6858f4f14d84319f38dfd1f63be6d95fd1438155
         imagePullPolicy: Always
         securityContext:
           runAsNonRoot: true

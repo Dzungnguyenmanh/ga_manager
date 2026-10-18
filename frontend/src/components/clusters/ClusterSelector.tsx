@@ -21,20 +21,20 @@ export function ClusterSelector() {
   }, []);
 
   return (
-    <div className="relative inline-block text-left" ref={dropdownRef}>
+    <div className="relative inline-block text-left min-w-0" ref={dropdownRef}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+        className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg border border-gray-200 bg-white px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer max-w-[195px] sm:max-w-none"
         data-testid="cluster-selector-trigger"
       >
-        <Server className="h-4 w-4 text-blue-600" />
-        <span className="truncate max-w-[140px]">
+        <Server className="h-4 w-4 text-blue-600 shrink-0" />
+        <span className="truncate max-w-[95px] sm:max-w-[140px]">
           {activeCluster ? activeCluster.name : clusters.length > 0 ? 'Chọn Cluster' : 'Chưa có Cluster'}
         </span>
         {activeCluster?.environment && (
           <span
-            className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${
+            className={`text-[10px] font-bold px-1.5 py-0.2 rounded border shrink-0 ${
               activeCluster.environment === 'PROD'
                 ? 'bg-rose-50 text-rose-700 border-rose-300'
                 : activeCluster.environment === 'STG'
@@ -45,12 +45,12 @@ export function ClusterSelector() {
             {activeCluster.environment}
           </span>
         )}
-        <ChevronDown className="h-4 w-4 text-gray-400" />
+        <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
       </button>
 
       {isOpen && (
         <div
-          className="absolute right-0 mt-2 w-72 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black/5 focus:outline-none z-50 p-1 border border-gray-100"
+          className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-[calc(100vw-1.5rem)] max-w-[290px] sm:w-72 origin-top-left sm:origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black/5 focus:outline-none z-50 p-1 border border-gray-100"
           data-testid="cluster-selector-dropdown"
         >
           <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">

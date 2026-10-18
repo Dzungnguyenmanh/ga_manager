@@ -139,13 +139,13 @@ export default function AuditLogsPage() {
     <AppLayout>
       <div className="space-y-6">
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-purple-100 text-purple-700">
+              <span className="p-2 rounded-xl bg-purple-100 text-purple-700 shrink-0">
                 <History className="h-5 w-5" />
               </span>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
                 Nhật Ký Kiểm Toán (Audit Logs)
               </h1>
             </div>
@@ -155,7 +155,7 @@ export default function AuditLogsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={fetchLogs} disabled={isLoading} className="text-xs h-9">
+            <Button variant="outline" size="sm" onClick={fetchLogs} disabled={isLoading} className="text-xs h-9 w-full sm:w-auto">
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
               Làm mới
             </Button>
@@ -163,19 +163,19 @@ export default function AuditLogsPage() {
         </div>
 
         {errorMsg && (
-          <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center justify-between">
+          <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span>{errorMsg}</span>
-            <Button size="sm" variant="outline" onClick={fetchLogs} className="h-7 text-xs bg-white">
+            <Button size="sm" variant="outline" onClick={fetchLogs} className="h-7 text-xs bg-white shrink-0">
               Thử lại
             </Button>
           </div>
         )}
 
         {/* Filters Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-xs">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-xs">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto flex-1">
             {/* Search */}
-            <div className="relative w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
               <input
                 type="text"
@@ -190,7 +190,7 @@ export default function AuditLogsPage() {
             <select
               value={selectedAction}
               onChange={(e) => setSelectedAction(e.target.value)}
-              className="h-8 px-2.5 text-xs rounded-lg border border-gray-200 bg-white font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="h-8 px-2.5 text-xs rounded-lg border border-gray-200 bg-white font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 flex-1 sm:flex-initial"
             >
               <option value="ALL">Tất cả hành động</option>
               <option value="CREATE">CREATE (Tạo mới)</option>
@@ -204,7 +204,7 @@ export default function AuditLogsPage() {
             <select
               value={selectedResource}
               onChange={(e) => setSelectedResource(e.target.value)}
-              className="h-8 px-2.5 text-xs rounded-lg border border-gray-200 bg-white font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="h-8 px-2.5 text-xs rounded-lg border border-gray-200 bg-white font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 flex-1 sm:flex-initial"
             >
               <option value="ALL">Tất cả tài nguyên</option>
               <option value="service">Service</option>

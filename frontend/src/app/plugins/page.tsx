@@ -361,14 +361,15 @@ export default function PluginsPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Quản lý Kong Plugins</h1>
-            <p className="text-sm text-gray-500">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Quản lý Kong Plugins</h1>
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
               Gắn chính sách theo thứ tự ưu tiên: <strong>Route</strong> ➔ <strong>Service</strong> ➔ <strong>Consumer</strong> ➔ <strong>Global</strong> ({activeCluster ? activeCluster.name : 'Chưa chọn Cluster'})
             </p>
           </div>
           <Button
+            size="sm"
             onClick={() => {
               if (!activeClusterId) {
                 alert('Vui lòng thêm hoặc chọn một Kong Cluster trước!');
@@ -377,20 +378,21 @@ export default function PluginsPage() {
               setSelectedPluginKey('rate-limiting');
               setIsModalOpen(true);
             }}
+            className="text-xs w-full sm:w-auto"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4 mr-1.5" />
             Kích hoạt Plugin mới
           </Button>
         </div>
 
         {!activeClusterId && (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm flex items-center justify-between">
+          <div className="p-3.5 sm:p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-600" />
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
               <span>Chưa có Kong Cluster nào được chọn. Vui lòng kết nối Cluster để quản lý Plugins.</span>
             </div>
-            <Link href="/settings/clusters">
-              <Button size="sm" variant="outline" className="text-xs bg-white">
+            <Link href="/settings/clusters" className="shrink-0">
+              <Button size="sm" variant="outline" className="text-xs bg-white w-full sm:w-auto">
                 Chọn Cluster
               </Button>
             </Link>
@@ -398,9 +400,9 @@ export default function PluginsPage() {
         )}
 
         {errorMsg && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center justify-between">
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span>{errorMsg}</span>
-            <Button size="sm" variant="outline" onClick={fetchPlugins} className="h-7 text-xs">
+            <Button size="sm" variant="outline" onClick={fetchPlugins} className="h-7 text-xs shrink-0">
               Thử lại
             </Button>
           </div>
@@ -566,8 +568,8 @@ export default function PluginsPage() {
           </div>
 
           <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg text-xs space-y-1">
-            <div className="flex items-center gap-1.5 font-semibold text-blue-900">
-              <Info className="h-4 w-4 text-blue-600" />
+            <div className="flex items-center gap-1.5 font-semibold text-blue-900 flex-wrap">
+              <Info className="h-4 w-4 text-blue-600 shrink-0" />
               <span>{currentTemplate.title}</span>
               <span className="text-[10px] px-2 py-0.5 bg-blue-200 text-blue-800 rounded-full font-normal">
                 {currentTemplate.category}
@@ -576,7 +578,7 @@ export default function PluginsPage() {
             <p className="text-blue-800/80 leading-relaxed">{currentTemplate.description}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Phạm vi áp dụng (Plugin Scope)

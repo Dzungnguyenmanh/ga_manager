@@ -371,19 +371,19 @@ export default function RoutesPage() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-gray-900">Quản lý Kong Routes</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Quản lý Kong Routes</h1>
               <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold">
                 1. Traffic Ingress
               </Badge>
             </div>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
               Định tuyến các request từ client đến các Kong Services tương ứng ({activeCluster ? activeCluster.name : 'Chưa chọn Cluster'})
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -400,7 +400,7 @@ export default function RoutesPage() {
               <RefreshCw className={`h-4 w-4 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
               Làm mới
             </Button>
-            <Button onClick={handleOpenCreateModal}>
+            <Button size="sm" onClick={handleOpenCreateModal} className="text-xs">
               <Plus className="h-4 w-4 mr-1.5" />
               Tạo Route mới
             </Button>
@@ -408,13 +408,13 @@ export default function RoutesPage() {
         </div>
 
         {!activeClusterId && (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm flex items-center justify-between shadow-xs">
+          <div className="p-3.5 sm:p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
               <span>Chưa có Kong Cluster nào được chọn. Vui lòng kết nối Cluster để quản lý Routes.</span>
             </div>
-            <Link href="/settings/clusters">
-              <Button size="sm" variant="outline" className="text-xs bg-white text-amber-900 border-amber-300">
+            <Link href="/settings/clusters" className="shrink-0">
+              <Button size="sm" variant="outline" className="text-xs bg-white text-amber-900 border-amber-300 w-full sm:w-auto">
                 Chọn Cluster
               </Button>
             </Link>
@@ -422,19 +422,19 @@ export default function RoutesPage() {
         )}
 
         {errorMsg && (
-          <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center justify-between shadow-xs">
+          <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
               <span>{errorMsg}</span>
             </div>
-            <Button size="sm" variant="outline" onClick={fetchData} className="h-7 text-xs bg-white">
+            <Button size="sm" variant="outline" onClick={fetchData} className="h-7 text-xs bg-white shrink-0">
               Thử lại
             </Button>
           </div>
         )}
 
         {/* Search Bar */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
           <div className="relative w-full sm:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input

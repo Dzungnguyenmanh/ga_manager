@@ -488,21 +488,22 @@ export default function UpstreamsPage() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-gray-900">Upstream Pools & Backend Targets</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Upstream Pools & Backend Targets</h1>
               <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
                 Enterprise Health Checks
               </Badge>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
               Quản lý cân bằng tải (Load Balancing Pools), Backend Targets (IP:Port), và giám sát <strong>Active & Passive Health Checks</strong>.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
+              size="sm"
               onClick={() => {
                 setDiagHost('');
                 setDiagPort(80);
@@ -514,21 +515,21 @@ export default function UpstreamsPage() {
               <Activity className="h-3.5 w-3.5 mr-1.5 text-blue-600" />
               Chẩn đoán mạng (Diagnostics)
             </Button>
-            <Button variant="outline" onClick={fetchUpstreams} className="text-xs">
+            <Button variant="outline" size="sm" onClick={fetchUpstreams} className="text-xs">
               <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
               Làm mới
             </Button>
-            <Button onClick={handleOpenCreateModal} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
-              <Plus className="h-4 w-4 mr-2" />
+            <Button size="sm" onClick={handleOpenCreateModal} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm text-xs">
+              <Plus className="h-4 w-4 mr-1.5" />
               Tạo Upstream Pool
             </Button>
           </div>
         </div>
 
         {/* Informational Banner */}
-        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl p-3.5 flex items-center justify-between text-xs text-emerald-900">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700">
+        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-900">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700 shrink-0">
               <HeartPulse className="h-4 w-4" />
             </div>
             <div>
@@ -538,21 +539,21 @@ export default function UpstreamsPage() {
               </p>
             </div>
           </div>
-          <Link href="/services">
-            <Button size="sm" variant="outline" className="h-8 text-xs bg-white text-emerald-700 border-emerald-300">
+          <Link href="/services" className="shrink-0">
+            <Button size="sm" variant="outline" className="h-8 text-xs bg-white text-emerald-700 border-emerald-300 w-full sm:w-auto">
               Gán vào Kong Services
             </Button>
           </Link>
         </div>
 
         {!activeClusterId && (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm flex items-center justify-between">
+          <div className="p-3.5 sm:p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-600" />
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
               <span>Chưa có Kong Cluster nào được chọn. Vui lòng kết nối Cluster để quản lý Upstreams.</span>
             </div>
-            <Link href="/settings/clusters">
-              <Button size="sm" variant="outline" className="text-xs bg-white">
+            <Link href="/settings/clusters" className="shrink-0">
+              <Button size="sm" variant="outline" className="text-xs bg-white w-full sm:w-auto">
                 Chọn Cluster
               </Button>
             </Link>
@@ -560,9 +561,9 @@ export default function UpstreamsPage() {
         )}
 
         {errorMsg && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center justify-between">
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span>{errorMsg}</span>
-            <Button size="sm" variant="outline" onClick={fetchUpstreams} className="h-7 text-xs">
+            <Button size="sm" variant="outline" onClick={fetchUpstreams} className="h-7 text-xs shrink-0">
               Thử lại
             </Button>
           </div>

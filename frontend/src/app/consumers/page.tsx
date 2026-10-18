@@ -430,28 +430,28 @@ export default function ConsumersPage() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-gray-900">Quản lý Consumers & Credentials</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Quản lý Consumers & Credentials</h1>
               <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
                 Enterprise Hub
               </Badge>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
               Mô hình chuẩn Kong Enterprise: Quản lý Định danh <strong>Consumer</strong> ➔ Cấp phát <strong>API Key</strong>, <strong>JWT</strong>, <strong>Basic Auth</strong>, và Phân quyền nhóm <strong>ACL Groups</strong>.
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button onClick={openCreateModal} className="bg-purple-600 hover:bg-purple-700 text-white shadow-sm">
-              <Plus className="h-4 w-4 mr-2" />
+            <Button size="sm" onClick={openCreateModal} className="bg-purple-600 hover:bg-purple-700 text-white shadow-sm text-xs w-full sm:w-auto">
+              <Plus className="h-4 w-4 mr-1.5" />
               Tạo Consumer mới
             </Button>
           </div>
         </div>
 
         {/* Informational Guidance Banner */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/80 rounded-xl p-3 flex items-start gap-3">
             <div className="p-2 bg-blue-100 rounded-lg text-blue-700 mt-0.5">
               <KeyRound className="h-4 w-4" />
@@ -494,13 +494,13 @@ export default function ConsumersPage() {
         </div>
 
         {!activeClusterId && (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm flex items-center justify-between">
+          <div className="p-3.5 sm:p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-600" />
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
               <span>Chưa có Kong Cluster nào được chọn. Vui lòng kết nối Cluster để quản lý Consumers & Credentials.</span>
             </div>
-            <Link href="/settings/clusters">
-              <Button size="sm" variant="outline" className="text-xs bg-white">
+            <Link href="/settings/clusters" className="shrink-0">
+              <Button size="sm" variant="outline" className="text-xs bg-white w-full sm:w-auto">
                 Chọn Cluster
               </Button>
             </Link>
@@ -508,9 +508,9 @@ export default function ConsumersPage() {
         )}
 
         {errorMsg && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center justify-between">
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span>{errorMsg}</span>
-            <Button size="sm" variant="outline" onClick={fetchConsumers} className="h-7 text-xs">
+            <Button size="sm" variant="outline" onClick={fetchConsumers} className="h-7 text-xs shrink-0">
               Thử lại
             </Button>
           </div>
@@ -726,11 +726,11 @@ export default function ConsumersPage() {
         >
           <div className="space-y-5">
             {/* Tab Navigation */}
-            <div className="flex border-b border-gray-200">
+            <div className="flex border-b border-gray-200 overflow-x-auto whitespace-nowrap">
               <button
                 type="button"
                 onClick={() => handleTabChange('key-auth')}
-                className={`flex items-center gap-1.5 py-2.5 px-4 font-semibold text-xs border-b-2 transition-colors ${
+                className={`flex items-center gap-1.5 py-2.5 px-3 sm:px-4 font-semibold text-xs border-b-2 transition-colors shrink-0 ${
                   activeTab === 'key-auth'
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-900'
@@ -746,7 +746,7 @@ export default function ConsumersPage() {
               <button
                 type="button"
                 onClick={() => handleTabChange('jwt')}
-                className={`flex items-center gap-1.5 py-2.5 px-4 font-semibold text-xs border-b-2 transition-colors ${
+                className={`flex items-center gap-1.5 py-2.5 px-3 sm:px-4 font-semibold text-xs border-b-2 transition-colors shrink-0 ${
                   activeTab === 'jwt'
                     ? 'border-indigo-600 text-indigo-600'
                     : 'border-transparent text-gray-500 hover:text-gray-900'
@@ -762,7 +762,7 @@ export default function ConsumersPage() {
               <button
                 type="button"
                 onClick={() => handleTabChange('basic-auth')}
-                className={`flex items-center gap-1.5 py-2.5 px-4 font-semibold text-xs border-b-2 transition-colors ${
+                className={`flex items-center gap-1.5 py-2.5 px-3 sm:px-4 font-semibold text-xs border-b-2 transition-colors shrink-0 ${
                   activeTab === 'basic-auth'
                     ? 'border-emerald-600 text-emerald-600'
                     : 'border-transparent text-gray-500 hover:text-gray-900'
@@ -778,7 +778,7 @@ export default function ConsumersPage() {
               <button
                 type="button"
                 onClick={() => handleTabChange('acls')}
-                className={`flex items-center gap-1.5 py-2.5 px-4 font-semibold text-xs border-b-2 transition-colors ${
+                className={`flex items-center gap-1.5 py-2.5 px-3 sm:px-4 font-semibold text-xs border-b-2 transition-colors shrink-0 ${
                   activeTab === 'acls'
                     ? 'border-amber-600 text-amber-600'
                     : 'border-transparent text-gray-500 hover:text-gray-900'

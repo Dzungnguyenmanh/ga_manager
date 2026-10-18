@@ -220,16 +220,16 @@ export default function DashboardPage() {
         {/* Top Banner: Glassmorphism & High Contrast */}
         {activeCluster ? (
           <>
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-800 to-slate-950 p-6 text-white shadow-lg">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-800 to-slate-950 p-4 sm:p-6 text-white shadow-lg">
               <div className="absolute -right-12 -bottom-12 w-64 h-64 rounded-full bg-blue-500/20 blur-3xl pointer-events-none"></div>
               <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+                <div className="space-y-1.5 min-w-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                       Kong Gateway Cluster Active
                     </span>
-                    <span className={`text-xs px-2.5 py-0.5 rounded-md font-bold uppercase ${
+                    <span className={`text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-md font-bold uppercase ${
                       activeCluster.environment === 'PROD'
                         ? 'bg-rose-500/30 text-rose-200 border border-rose-400/30'
                         : activeCluster.environment === 'STG'
@@ -238,11 +238,11 @@ export default function DashboardPage() {
                     }`}>
                       {activeCluster.environment || 'DEV'}
                     </span>
-                    <span className="text-xs px-2.5 py-0.5 rounded-md bg-white/10 font-mono text-blue-200">
+                    <span className="text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-md bg-white/10 font-mono text-blue-200">
                       Cluster ID: #{activeCluster.id}
                     </span>
                     {nodeInfo?.topology && (
-                      <span className="text-xs px-2.5 py-0.5 rounded-md bg-indigo-500/30 font-semibold text-indigo-200 border border-indigo-400/30">
+                      <span className="text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-md bg-indigo-500/30 font-semibold text-indigo-200 border border-indigo-400/30">
                         {nodeInfo.topology === 'db_less'
                           ? 'DB-less Mode'
                           : nodeInfo.topology === 'hybrid_cp'
@@ -253,20 +253,20 @@ export default function DashboardPage() {
                       </span>
                     )}
                     {nodeInfo?.version && (
-                      <span className="text-xs px-2.5 py-0.5 rounded-md bg-purple-500/20 font-mono text-purple-200 border border-purple-400/30">
+                      <span className="text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-md bg-purple-500/20 font-mono text-purple-200 border border-purple-400/30">
                         Kong v{nodeInfo.version}
                       </span>
                     )}
                   </div>
-                  <h1 className="text-2xl font-black tracking-tight">{activeCluster.name}</h1>
-                  <p className="text-xs text-blue-100 font-mono flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight break-words">{activeCluster.name}</h1>
+                  <p className="text-[11px] sm:text-xs text-blue-100 font-mono flex items-center gap-x-2 gap-y-1 flex-wrap break-all">
                     <span>Admin API: <span className="text-blue-200 underline">{activeCluster.url}</span></span>
-                    <span>•</span>
+                    <span className="hidden sm:inline">•</span>
                     <span>Proxy Port: <span className="text-emerald-300 font-bold">:8000</span> (HTTP) / <span className="text-emerald-300 font-bold">:8443</span> (HTTPS)</span>
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2.5 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Button
                     onClick={() => setDiagnosticsOpen(true)}
                     variant="outline"
@@ -285,7 +285,7 @@ export default function DashboardPage() {
                   </Button>
                   <Link
                     href="/routes"
-                    className="px-4 py-2 bg-white text-blue-900 hover:bg-blue-50 rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5"
+                    className="px-3.5 sm:px-4 py-2 bg-white text-blue-900 hover:bg-blue-50 rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     Cấu hình Route mới
@@ -296,9 +296,9 @@ export default function DashboardPage() {
 
             {/* DB-less Topology Notice Banner */}
             {nodeInfo?.topology === 'db_less' && (
-              <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl flex items-center justify-between text-xs text-indigo-900 dark:text-indigo-200 shadow-xs">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/60 rounded-lg text-indigo-700 dark:text-indigo-300">
+              <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-indigo-900 dark:text-indigo-200 shadow-xs">
+                <div className="flex items-start sm:items-center gap-3">
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/60 rounded-lg text-indigo-700 dark:text-indigo-300 shrink-0">
                     <Server className="w-5 h-5" />
                   </div>
                   <div>
@@ -308,8 +308,8 @@ export default function DashboardPage() {
                     </p>
                   </div>
                 </div>
-                <Link href="/declarative">
-                  <Button size="sm" variant="outline" className="text-xs bg-white text-indigo-700 border-indigo-300 h-8">
+                <Link href="/declarative" className="shrink-0">
+                  <Button size="sm" variant="outline" className="text-xs bg-white text-indigo-700 border-indigo-300 h-8 w-full sm:w-auto">
                     Mở decK GitOps
                   </Button>
                 </Link>
@@ -317,19 +317,19 @@ export default function DashboardPage() {
             )}
           </>
         ) : (
-          <div className="bg-gradient-to-r from-gray-900 to-slate-800 rounded-2xl p-8 text-white shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="bg-gradient-to-r from-gray-900 to-slate-800 rounded-2xl p-5 sm:p-8 text-white shadow-md flex flex-col md:flex-row items-center justify-between gap-5 sm:gap-6">
             <div className="space-y-2 text-center md:text-left">
               <span className="text-xs font-semibold bg-white/10 px-3 py-1 rounded-full text-blue-300">
                 Setup Kong Gateway
               </span>
-              <h1 className="text-2xl font-bold">Bắt đầu cấu hình Kong Cluster</h1>
-              <p className="text-sm text-gray-300 max-w-xl">
+              <h1 className="text-xl sm:text-2xl font-bold">Bắt đầu cấu hình Kong Cluster</h1>
+              <p className="text-xs sm:text-sm text-gray-300 max-w-xl">
                 Hệ thống chưa kết nối tới cụm Kong Gateway nào. Hãy thêm cụm Kong Gateway nội bộ (ví dụ: http://localhost:8001) để bắt đầu quản trị.
               </p>
             </div>
             <Link
               href="/settings/clusters"
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors flex items-center gap-2 shadow-lg shrink-0"
+              className="px-5 sm:px-6 py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg shrink-0 w-full sm:w-auto"
             >
               <Plus className="h-5 w-5" />
               Kết nối Cluster ngay

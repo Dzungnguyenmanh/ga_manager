@@ -24,10 +24,10 @@ export default function TopologyPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-blue-100 text-blue-700">
+              <span className="p-1.5 rounded-lg bg-blue-100 text-blue-700 shrink-0">
                 <Zap className="h-4 w-4" />
               </span>
-              <h1 className="text-xl font-bold text-gray-900 tracking-tight">
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
                 Sơ Đồ Luồng Kiến Trúc (Topology Flow Graph)
               </h1>
             </div>
@@ -36,7 +36,7 @@ export default function TopologyPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link href="/routes">
               <Button size="sm" variant="outline" className="text-xs h-8">
                 <RouteIcon className="h-3.5 w-3.5 mr-1.5 text-emerald-600" />
@@ -59,13 +59,13 @@ export default function TopologyPage() {
         </div>
 
         {!activeClusterId && (
-          <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs flex items-center justify-between shadow-xs">
+          <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />
               <span>Chưa có Kong Cluster nào được chọn. Vui lòng kết nối Cluster để trực quan hóa sơ đồ luồng.</span>
             </div>
-            <Link href="/settings/clusters">
-              <Button size="sm" variant="outline" className="text-xs bg-white text-amber-900 border-amber-300 h-7">
+            <Link href="/settings/clusters" className="shrink-0">
+              <Button size="sm" variant="outline" className="text-xs bg-white text-amber-900 border-amber-300 h-7 w-full sm:w-auto">
                 Chọn Cluster
               </Button>
             </Link>

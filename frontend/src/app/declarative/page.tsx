@@ -319,15 +319,15 @@ export default function DeclarativePage() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-gray-900">decK GitOps & Declarative Config Hub</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">decK GitOps & Declarative Config Hub</h1>
               <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
                 decK Format v3.0
               </Badge>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
               Đồng bộ cấu hình toàn diện (Infrastructure as Code - IaC), xuất file <strong>YAML / JSON</strong> chuẩn decK, so sánh sai khác (Diff) và sao lưu Snapshot điểm thời gian.
             </p>
           </div>
@@ -337,7 +337,7 @@ export default function DeclarativePage() {
                 setNewSnapshotName(`Backup-${new Date().toISOString().slice(0, 16).replace('T', '_')}`);
                 setIsCreateSnapshotModalOpen(true);
               }}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm text-xs"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm text-xs w-full sm:w-auto"
             >
               <Archive className="h-4 w-4 mr-1.5" />
               Tạo Snapshot mới
@@ -347,8 +347,8 @@ export default function DeclarativePage() {
 
         {/* Guidance Banner */}
         <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200/80 rounded-xl p-3.5 flex items-center justify-between text-xs text-indigo-950">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 rounded-lg text-indigo-700">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2 bg-indigo-100 rounded-lg text-indigo-700 shrink-0">
               <FileCode className="h-4 w-4" />
             </div>
             <div>
@@ -361,27 +361,27 @@ export default function DeclarativePage() {
         </div>
 
         {!activeClusterId && (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm flex items-center justify-between">
+          <div className="p-3.5 sm:p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-600" />
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
               <span>Chưa có Kong Cluster nào được chọn. Vui lòng kết nối Cluster để quản trị GitOps.</span>
             </div>
-            <Link href="/settings/clusters">
-              <Button size="sm" variant="outline" className="text-xs bg-white">
+            <Link href="/settings/clusters" className="shrink-0">
+              <Button size="sm" variant="outline" className="text-xs bg-white w-full sm:w-auto">
                 Chọn Cluster
               </Button>
             </Link>
           </div>
         )}
 
-        {/* Main Card with 3 Tabs */}
+        {/* Main Card with 4 Tabs */}
         <Card className="border border-gray-200 shadow-sm overflow-hidden">
           <CardHeader className="border-b border-gray-100 pb-0 bg-slate-50/50">
-            <div className="flex border-b border-gray-200 -mx-6 px-6">
+            <div className="flex border-b border-gray-200 -mx-6 px-3 sm:px-6 overflow-x-auto whitespace-nowrap">
               <button
                 type="button"
                 onClick={() => setActiveTab('export')}
-                className={`flex items-center gap-2 py-3 px-4 font-semibold text-xs border-b-2 transition-colors ${
+                className={`flex items-center gap-2 py-3 px-3 sm:px-4 font-semibold text-xs border-b-2 transition-colors shrink-0 ${
                   activeTab === 'export'
                     ? 'border-indigo-600 text-indigo-700'
                     : 'border-transparent text-gray-500 hover:text-gray-900'
@@ -394,7 +394,7 @@ export default function DeclarativePage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('import-sync')}
-                className={`flex items-center gap-2 py-3 px-4 font-semibold text-xs border-b-2 transition-colors ${
+                className={`flex items-center gap-2 py-3 px-3 sm:px-4 font-semibold text-xs border-b-2 transition-colors shrink-0 ${
                   activeTab === 'import-sync'
                     ? 'border-indigo-600 text-indigo-700'
                     : 'border-transparent text-gray-500 hover:text-gray-900'
@@ -407,7 +407,7 @@ export default function DeclarativePage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('snapshots')}
-                className={`flex items-center gap-2 py-3 px-4 font-semibold text-xs border-b-2 transition-colors ${
+                className={`flex items-center gap-2 py-3 px-3 sm:px-4 font-semibold text-xs border-b-2 transition-colors shrink-0 ${
                   activeTab === 'snapshots'
                     ? 'border-indigo-600 text-indigo-700'
                     : 'border-transparent text-gray-500 hover:text-gray-900'
@@ -426,7 +426,7 @@ export default function DeclarativePage() {
                   setActiveTab('promote');
                   if (!sourceClusterId && activeClusterId) setSourceClusterId(activeClusterId);
                 }}
-                className={`flex items-center gap-2 py-3 px-4 font-semibold text-xs border-b-2 transition-colors ${
+                className={`flex items-center gap-2 py-3 px-3 sm:px-4 font-semibold text-xs border-b-2 transition-colors shrink-0 ${
                   activeTab === 'promote'
                     ? 'border-indigo-600 text-indigo-700'
                     : 'border-transparent text-gray-500 hover:text-gray-900'
@@ -438,12 +438,12 @@ export default function DeclarativePage() {
             </div>
           </CardHeader>
 
-          <CardContent className="p-6">
+          <CardContent className="p-3.5 sm:p-6">
             {/* TAB 1: Export Config */}
             {activeTab === 'export' && (
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-semibold text-gray-700">Định dạng xuất:</span>
                     <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-100">
                       <button
@@ -465,13 +465,13 @@ export default function DeclarativePage() {
                         JSON
                       </button>
                     </div>
-                    <Badge variant="outline" className="text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200 ml-2">
+                    <Badge variant="outline" className="text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200">
                       <ShieldCheck className="w-3 h-3 mr-1 text-emerald-600" />
                       Secret Masking Protected
                     </Badge>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button variant="outline" size="sm" onClick={fetchExportConfig} className="h-8 text-xs">
                       <RefreshCw className={`h-3.5 w-3.5 mr-1 ${isExportLoading ? 'animate-spin' : ''}`} />
                       Làm mới Dump

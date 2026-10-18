@@ -113,33 +113,35 @@ export default function ClustersPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 flex-wrap">
               <span>Quản lý Kong Clusters</span>
               <span className="inline-flex items-center gap-1 text-xs font-medium bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200">
                 <Database className="h-3.5 w-3.5" /> Lưu trong PostgreSQL
               </span>
             </h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
               Mọi cấu hình kết nối Cluster được lưu trữ an toàn trong cơ sở dữ liệu PostgreSQL
             </p>
           </div>
           <Button
+            size="sm"
             onClick={() => {
               setEditingCluster(null);
               setIsModalOpen(true);
             }}
+            className="text-xs w-full sm:w-auto"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4 mr-1.5" />
             Thêm Cluster mới
           </Button>
         </div>
 
         {fetchError && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center justify-between">
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span>{fetchError}</span>
-            <Button size="sm" variant="outline" onClick={fetchClustersFromDB} className="h-7 text-xs">
+            <Button size="sm" variant="outline" onClick={fetchClustersFromDB} className="h-7 text-xs shrink-0">
               Thử lại
             </Button>
           </div>

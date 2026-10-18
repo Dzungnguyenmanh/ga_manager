@@ -254,21 +254,22 @@ export default function CertificatesPage() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-gray-900">Chứng chỉ SSL / TLS & SNIs</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Chứng chỉ SSL / TLS & SNIs</h1>
               <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
                 TLS Termination & mTLS
               </Badge>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
               Quản lý chứng chỉ số HTTPS/TLS, ánh xạ Server Name Indication (SNIs) và chứng chỉ gốc CA cho xác thực hai chiều mTLS.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
+              size="sm"
               onClick={() => {
                 fetchCertificates();
                 fetchCACertificates();
@@ -279,13 +280,13 @@ export default function CertificatesPage() {
               Làm mới
             </Button>
             {activeTab === 'server-certs' ? (
-              <Button onClick={() => setIsAddCertModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
-                <Plus className="h-4 w-4 mr-2" />
+              <Button size="sm" onClick={() => setIsAddCertModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm text-xs">
+                <Plus className="h-4 w-4 mr-1.5" />
                 Upload SSL Certificate
               </Button>
             ) : (
-              <Button onClick={() => setIsAddCaCertModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
-                <Plus className="h-4 w-4 mr-2" />
+              <Button size="sm" onClick={() => setIsAddCaCertModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm text-xs">
+                <Plus className="h-4 w-4 mr-1.5" />
                 Upload CA Certificate
               </Button>
             )}
@@ -293,9 +294,9 @@ export default function CertificatesPage() {
         </div>
 
         {/* Informational Guidance Banner */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl p-3.5 flex items-start gap-3">
-            <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700 mt-0.5">
+            <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700 mt-0.5 shrink-0">
               <Lock className="h-4 w-4" />
             </div>
             <div>
@@ -307,7 +308,7 @@ export default function CertificatesPage() {
           </div>
 
           <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200/80 rounded-xl p-3.5 flex items-start gap-3">
-            <div className="p-2 bg-indigo-100 rounded-lg text-indigo-700 mt-0.5">
+            <div className="p-2 bg-indigo-100 rounded-lg text-indigo-700 mt-0.5 shrink-0">
               <ShieldCheck className="h-4 w-4" />
             </div>
             <div>
@@ -320,13 +321,13 @@ export default function CertificatesPage() {
         </div>
 
         {!activeClusterId && (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm flex items-center justify-between">
+          <div className="p-3.5 sm:p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-600" />
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
               <span>Chưa có Kong Cluster nào được chọn. Vui lòng kết nối Cluster để quản lý Chứng chỉ SSL.</span>
             </div>
-            <Link href="/settings/clusters">
-              <Button size="sm" variant="outline" className="text-xs bg-white">
+            <Link href="/settings/clusters" className="shrink-0">
+              <Button size="sm" variant="outline" className="text-xs bg-white w-full sm:w-auto">
                 Chọn Cluster
               </Button>
             </Link>
@@ -334,23 +335,23 @@ export default function CertificatesPage() {
         )}
 
         {errorMsg && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center justify-between">
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span>{errorMsg}</span>
-            <Button size="sm" variant="outline" onClick={fetchCertificates} className="h-7 text-xs">
+            <Button size="sm" variant="outline" onClick={fetchCertificates} className="h-7 text-xs shrink-0">
               Thử lại
             </Button>
           </div>
         )}
 
         {/* Main Card with Tabs */}
-        <Card className="border border-gray-200 shadow-sm">
+        <Card className="border border-gray-200 shadow-sm overflow-hidden">
           <CardHeader className="border-b border-gray-100 pb-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
               <div>
                 <CardTitle className="text-base font-semibold">Kho Quản lý Chứng chỉ Bảo mật</CardTitle>
                 <CardDescription>Cấu hình mã hóa HTTPS cho Domain và xác thực CA Certificate</CardDescription>
               </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                 {activeTab === 'server-certs' && (
                   <select
                     value={expiryFilter}
@@ -377,11 +378,11 @@ export default function CertificatesPage() {
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex border-t border-gray-100 -mx-6 px-6">
+            <div className="flex border-t border-gray-100 -mx-6 px-3 sm:px-6 overflow-x-auto whitespace-nowrap">
               <button
                 type="button"
                 onClick={() => setActiveTab('server-certs')}
-                className={`flex items-center gap-2 py-3 px-4 font-semibold text-xs border-b-2 transition-colors ${
+                className={`flex items-center gap-2 py-3 px-3 sm:px-4 font-semibold text-xs border-b-2 transition-colors shrink-0 ${
                   activeTab === 'server-certs'
                     ? 'border-emerald-600 text-emerald-700'
                     : 'border-transparent text-gray-500 hover:text-gray-900'
@@ -397,7 +398,7 @@ export default function CertificatesPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('ca-certs')}
-                className={`flex items-center gap-2 py-3 px-4 font-semibold text-xs border-b-2 transition-colors ${
+                className={`flex items-center gap-2 py-3 px-3 sm:px-4 font-semibold text-xs border-b-2 transition-colors shrink-0 ${
                   activeTab === 'ca-certs'
                     ? 'border-indigo-600 text-indigo-700'
                     : 'border-transparent text-gray-500 hover:text-gray-900'

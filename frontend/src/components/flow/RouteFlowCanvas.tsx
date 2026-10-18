@@ -821,26 +821,28 @@ export function RouteFlowCanvas({ initialRouteId }: RouteFlowCanvasProps) {
     <div
       ref={containerRef}
       className={`relative w-full rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl overflow-hidden flex flex-col ${
-        isFullscreen ? 'fixed inset-0 z-50 rounded-none h-screen' : 'h-[calc(100vh-140px)] min-h-[720px]'
+        isFullscreen
+          ? 'fixed inset-0 z-50 rounded-none h-screen'
+          : 'h-[calc(100vh-120px)] sm:h-[calc(100vh-140px)] min-h-[540px] sm:min-h-[720px]'
       }`}
     >
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 bg-slate-900/95 px-4 py-2.5 text-white backdrop-blur z-20">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 border-b border-slate-800/80 bg-slate-900/95 px-3 sm:px-4 py-2 sm:py-2.5 text-white backdrop-blur z-20">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md">
             <Radio className="h-4 w-4 animate-pulse text-white" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-white tracking-wide">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-xs sm:text-sm font-bold text-white tracking-wide truncate">
                 Topology Sơ Đồ Luồng HTTP & Phân Nhánh
               </h3>
-              <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 KONG LIVE
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">
               {activeCluster ? activeCluster.name : 'Chưa chọn Cluster'} • Hiển thị{' '}
               <strong className="text-emerald-400">{filteredItems.length}</strong>/{routes.length} Routes •{' '}
               <strong className="text-purple-400">{availableHostnames.length}</strong> Hostnames •{' '}
@@ -849,14 +851,14 @@ export function RouteFlowCanvas({ initialRouteId }: RouteFlowCanvasProps) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
           <Button
             size="sm"
             variant="outline"
             onClick={
               expandedNodeIds.size > 0 ? handleCollapseAllDetails : handleExpandAllDetails
             }
-            className="h-8 bg-slate-950 border-slate-700 text-slate-300 hover:bg-slate-800 text-xs"
+            className="h-7 sm:h-8 px-2 sm:px-3 bg-slate-950 border-slate-700 text-slate-300 hover:bg-slate-800 text-[11px] sm:text-xs"
             title="Mở rộng hoặc thu gọn chi tiết tất cả các Node"
           >
             {expandedNodeIds.size > 0 ? (
@@ -877,10 +879,10 @@ export function RouteFlowCanvas({ initialRouteId }: RouteFlowCanvasProps) {
             variant="outline"
             onClick={fetchTopologyData}
             isLoading={isLoading}
-            className="h-8 bg-slate-950 border-slate-700 text-slate-300 hover:bg-slate-800 text-xs"
+            className="h-7 sm:h-8 px-2 sm:px-3 bg-slate-950 border-slate-700 text-slate-300 hover:bg-slate-800 text-[11px] sm:text-xs"
             title="Làm mới dữ liệu từ Kong"
           >
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+            <RefreshCw className="h-3.5 w-3.5 mr-1" />
             Làm mới
           </Button>
 
@@ -888,20 +890,20 @@ export function RouteFlowCanvas({ initialRouteId }: RouteFlowCanvasProps) {
             size="sm"
             variant="outline"
             onClick={toggleFullscreen}
-            className="h-8 bg-slate-950 border-slate-700 text-slate-300 hover:bg-slate-800 text-xs"
+            className="h-7 sm:h-8 px-2 sm:px-3 bg-slate-950 border-slate-700 text-slate-300 hover:bg-slate-800 text-[11px] sm:text-xs"
             title={isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}
           >
             {isFullscreen ? <Minimize2 className="h-3.5 w-3.5 mr-1" /> : <Maximize2 className="h-3.5 w-3.5 mr-1" />}
-            {isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}
+            <span className="hidden xs:inline">{isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}</span>
           </Button>
         </div>
       </div>
 
       {/* Filter & Grouping Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-800/80 bg-slate-900/70 px-4 py-2 text-xs text-slate-200 z-20">
-        <div className="flex flex-wrap items-center gap-2 flex-1">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 bg-slate-900/70 px-3 sm:px-4 py-2 text-xs text-slate-200 z-20">
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto lg:flex-1">
           {/* Quick Search */}
-          <div className="relative min-w-[200px] max-w-xs flex-1">
+          <div className="relative w-full sm:w-auto sm:min-w-[180px] sm:max-w-xs sm:flex-1">
             <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
@@ -922,13 +924,13 @@ export function RouteFlowCanvas({ initialRouteId }: RouteFlowCanvasProps) {
           </div>
 
           {/* Filter by Hostname */}
-          <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 h-8">
+          <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 h-8 flex-1 sm:flex-initial min-w-[135px]">
             <Globe className="h-3.5 w-3.5 text-purple-400 shrink-0" />
-            <span className="text-[11px] text-slate-400">Hostname:</span>
+            <span className="hidden sm:inline text-[11px] text-slate-400">Hostname:</span>
             <select
               value={selectedHostname}
               onChange={(e) => setSelectedHostname(e.target.value)}
-              className="bg-slate-950 text-xs text-white font-medium focus:outline-none cursor-pointer max-w-[180px]"
+              className="bg-slate-950 text-xs text-white font-medium focus:outline-none cursor-pointer w-full sm:max-w-[170px] truncate"
             >
               <option value="all">Tất cả Hostname ({availableHostnames.length})</option>
               {availableHostnames.map((h) => (
@@ -940,13 +942,13 @@ export function RouteFlowCanvas({ initialRouteId }: RouteFlowCanvasProps) {
           </div>
 
           {/* Filter by Target */}
-          <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 h-8">
+          <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 h-8 flex-1 sm:flex-initial min-w-[135px]">
             <Server className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-            <span className="text-[11px] text-slate-400">Target:</span>
+            <span className="hidden sm:inline text-[11px] text-slate-400">Target:</span>
             <select
               value={selectedTarget}
               onChange={(e) => setSelectedTarget(e.target.value)}
-              className="bg-slate-950 text-xs text-white font-medium focus:outline-none cursor-pointer max-w-[210px]"
+              className="bg-slate-950 text-xs text-white font-medium focus:outline-none cursor-pointer w-full sm:max-w-[190px] truncate"
             >
               <option value="all">Tất cả Target ({availableTargets.length})</option>
               {availableTargets.map(([tName, count]) => (
@@ -959,16 +961,16 @@ export function RouteFlowCanvas({ initialRouteId }: RouteFlowCanvasProps) {
         </div>
 
         {/* Group By Mode Selector & Reset */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-700/80">
-            <span className="flex items-center gap-1 text-[11px] text-slate-400 px-2">
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-between lg:justify-end">
+          <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-700/80 overflow-x-auto max-w-full">
+            <span className="flex items-center gap-1 text-[11px] text-slate-400 px-2 shrink-0">
               <FolderTree className="h-3.5 w-3.5 text-blue-400" />
-              Nhóm theo:
+              <span className="hidden xs:inline">Nhóm theo:</span>
             </span>
             <button
               type="button"
               onClick={() => setGroupBy('none')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+              className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors shrink-0 ${
                 groupBy === 'none'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-400 hover:text-white'
@@ -979,7 +981,7 @@ export function RouteFlowCanvas({ initialRouteId }: RouteFlowCanvasProps) {
             <button
               type="button"
               onClick={() => setGroupBy('hostname')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+              className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors shrink-0 ${
                 groupBy === 'hostname'
                   ? 'bg-purple-600 text-white shadow-xs'
                   : 'text-slate-400 hover:text-white'
@@ -990,7 +992,7 @@ export function RouteFlowCanvas({ initialRouteId }: RouteFlowCanvasProps) {
             <button
               type="button"
               onClick={() => setGroupBy('target')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+              className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors shrink-0 ${
                 groupBy === 'target'
                   ? 'bg-emerald-600 text-white shadow-xs'
                   : 'text-slate-400 hover:text-white'
@@ -1005,7 +1007,7 @@ export function RouteFlowCanvas({ initialRouteId }: RouteFlowCanvasProps) {
               size="sm"
               variant="ghost"
               onClick={handleResetFilters}
-              className="h-8 px-2.5 text-xs text-amber-300 hover:text-white hover:bg-slate-800"
+              className="h-8 px-2.5 text-xs text-amber-300 hover:text-white hover:bg-slate-800 shrink-0"
               title="Đặt lại toàn bộ bộ lọc và chế độ nhóm"
             >
               <RotateCcw className="h-3.5 w-3.5 mr-1" />
@@ -1045,7 +1047,7 @@ export function RouteFlowCanvas({ initialRouteId }: RouteFlowCanvasProps) {
                 Hãy tạo Service và Route thật đầu tiên trong Kong Gateway để hệ thống tự động sinh sơ đồ phân nhánh thời gian thực.
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap justify-center gap-3">
               <Link href="/services">
                 <Button size="sm" className="bg-blue-600 hover:bg-blue-500 text-xs">
                   <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -1112,7 +1114,7 @@ export function RouteFlowCanvas({ initialRouteId }: RouteFlowCanvasProps) {
               nodeStrokeWidth={3}
               zoomable
               pannable
-              className="!bg-slate-950/90 !border-slate-800 !rounded-xl overflow-hidden shadow-2xl"
+              className="!hidden md:!block !bg-slate-950/90 !border-slate-800 !rounded-xl overflow-hidden shadow-2xl"
               nodeColor={(node) => {
                 switch (node.type) {
                   case 'gatewayNode':
@@ -1353,9 +1355,9 @@ export function RouteFlowCanvas({ initialRouteId }: RouteFlowCanvasProps) {
 
         {/* Node Inspector Drawer */}
         {inspectedNode && (
-          <div className="absolute top-3 right-3 bottom-3 w-80 z-40 rounded-2xl border border-slate-700 bg-slate-900/95 text-slate-100 shadow-2xl backdrop-blur-md flex flex-col overflow-hidden">
+          <div className="absolute inset-x-2 bottom-2 top-auto max-h-[65vh] sm:inset-x-auto sm:top-3 sm:right-3 sm:bottom-3 sm:max-h-none sm:w-80 z-40 rounded-2xl border border-slate-700 bg-slate-900/95 text-slate-100 shadow-2xl backdrop-blur-md flex flex-col overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400">
                   Node Inspector ({inspectedNode.type})
                 </p>
@@ -1372,7 +1374,7 @@ export function RouteFlowCanvas({ initialRouteId }: RouteFlowCanvasProps) {
               <button
                 type="button"
                 onClick={() => setInspectedNode(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 shrink-0"
               >
                 <X className="h-4 w-4" />
               </button>

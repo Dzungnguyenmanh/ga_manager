@@ -14,7 +14,7 @@ spec:
       labels:
         app: kong-manager-frontend
       annotations:
-        rollout/commit: "2026-10-17-flow-sso-v2"
+        rollout/commit: "53f3b39ae0c81657eb62fbda8fea6d2a754e12c3"
     spec:
       affinity:
         podAntiAffinity:
@@ -35,7 +35,7 @@ spec:
         fsGroup: 10001
       containers:
       - name: frontend
-        image: images.hmisp.com.vn/h-iam/ga-manager-frontend:latest
+        image: images.hmisp.com.vn/h-iam/ga-manager-frontend:53f3b39ae0c81657eb62fbda8fea6d2a754e12c3
         imagePullPolicy: Always
         securityContext:
           runAsNonRoot: true
